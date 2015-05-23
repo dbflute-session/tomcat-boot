@@ -56,8 +56,8 @@ public class TomcatBoot {
     // ===================================================================================
     //                                                                         Constructor
     //                                                                         ===========
+    // TODO jflute tomcat_boot: want to suppress annotation search
     public TomcatBoot(int port, String contextPath) {
-        // TODO jflute tomcat_boot: cannot boot why?
         this.port = port;
         this.contextPath = contextPath;
     }
