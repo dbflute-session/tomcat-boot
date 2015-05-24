@@ -187,6 +187,9 @@ public class TomcatBoot {
         final File markFile = new File(buildMarkFilePath());
         if (markFile.exists()) {
             markFile.setLastModified(System.currentTimeMillis());
+            try {
+                Thread.sleep(200L); // for Tomcat early catching port
+            } catch (InterruptedException ignored) {}
         } else {
             markFile.mkdirs();
             try {
@@ -224,7 +227,7 @@ public class TomcatBoot {
     }
 
     protected long getShuwdownHookWaitMillis() {
-        return 2000L;
+        return 700L; // for Tomcat early catching port
     }
 
     // -----------------------------------------------------
