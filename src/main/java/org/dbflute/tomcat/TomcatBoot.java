@@ -17,16 +17,26 @@ package org.dbflute.tomcat;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
+import java.util.Map.Entry;
+import java.util.Set;
 
+import javax.servlet.ServletContainerInitializer;
 import javax.servlet.ServletException;
 
 import org.apache.catalina.Context;
 import org.apache.catalina.Globals;
+import org.apache.catalina.Host;
+import org.apache.catalina.core.StandardContext;
+import org.apache.catalina.core.StandardHost;
+import org.apache.catalina.startup.ContextConfig;
 import org.apache.catalina.startup.Tomcat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -108,7 +118,7 @@ public class TomcatBoot {
     }
 
     protected void prepareServer() {
-        server = new Tomcat();
+        server = new MyTomcat();
         server.setPort(port);
         final Context webContext;
         try {
@@ -122,9 +132,91 @@ public class TomcatBoot {
         } catch (ServletException e) {
             throw new IllegalStateException("Failed to set up web context.", e);
         }
-        webContext.setJarScanner(null);
     }
 
+    // -----------------------------------------------------
+    //                                             My Tomcat
+    //                                             ---------
+    public static class MyTomcat extends Tomcat { // to remove org.eclipse.jetty
+
+        // copied from super Tomcat because of private methods
+        @Override
+        public Context addWebapp(Host host, String contextPath, String name, String docBase) {
+            // quit
+            //silence(host, contextPath);
+
+            final Context ctx = createContext(host, contextPath);
+            ctx.setPath(contextPath);
+            ctx.setDocBase(docBase);
+            ctx.addLifecycleListener(newDefaultWebXmlListener());
+            ctx.setConfigFile(getWebappConfigFile(docBase, contextPath));
+
+            final ContextConfig ctxCfg = createContextConfig(); // *extension point
+            ctx.addLifecycleListener(ctxCfg);
+
+            // prevent it from looking ( if it finds one - it'll have dup error )
+            ctxCfg.setDefaultWebXml(noDefaultWebXmlPath());
+
+            if (host == null) {
+                getHost().addChild(ctx);
+            } else {
+                host.addChild(ctx);
+            }
+
+            return ctx;
+        }
+
+        protected DefaultWebXmlListener newDefaultWebXmlListener() {
+            return new DefaultWebXmlListener();
+        }
+
+        protected Context createContext(Host host, String url) {
+            String contextClass = StandardContext.class.getName();
+            if (host == null) {
+                host = this.getHost();
+            }
+            if (host instanceof StandardHost) {
+                contextClass = ((StandardHost) host).getContextClass();
+            }
+            try {
+                return (Context) Class.forName(contextClass).getConstructor().newInstance();
+            } catch (InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException
+                    | NoSuchMethodException | SecurityException | ClassNotFoundException e) {
+                String msg = "Can't instantiate context-class " + contextClass + " for host " + host + " and url " + url;
+                throw new IllegalArgumentException(msg, e);
+            }
+        }
+
+        protected ContextConfig createContextConfig() {
+            return new MyContextConfig();
+        }
+    }
+
+    public static class MyContextConfig extends ContextConfig {
+
+        @Override
+        protected void processServletContainerInitializers() {
+            super.processServletContainerInitializers();
+            removeJettyInitializer();
+        }
+
+        protected void removeJettyInitializer() {
+            final List<ServletContainerInitializer> removedList = new ArrayList<ServletContainerInitializer>();
+            for (Entry<ServletContainerInitializer, Set<Class<?>>> entry : initializerClassMap.entrySet()) {
+                final ServletContainerInitializer initializer = entry.getKey();
+                if (initializer.getClass().getName().startsWith("org.eclipse.jetty")) {
+                    removedList.add(initializer);
+                }
+            }
+            for (ServletContainerInitializer initializer : removedList) {
+                initializerClassMap.remove(initializer);
+            }
+        }
+    }
+
+    // -----------------------------------------------------
+    //                                               Prepare
+    //                                               -------
     protected String prepareWarPath() {
         final URL location = TomcatBoot.class.getProtectionDomain().getCodeSource().getLocation();
         String path;
@@ -144,6 +236,9 @@ public class TomcatBoot {
         return "./src/main/webapp/WEB-INF/web.xml";
     }
 
+    // -----------------------------------------------------
+    //                                                 Start
+    //                                                 -----
     protected URI startServer() {
         try {
             server.start();
@@ -187,9 +282,7 @@ public class TomcatBoot {
         final File markFile = new File(buildMarkFilePath());
         if (markFile.exists()) {
             markFile.setLastModified(System.currentTimeMillis());
-            try {
-                Thread.sleep(200L); // for Tomcat early catching port
-            } catch (InterruptedException ignored) {}
+            waitForExistingServerShuwdown();
         } else {
             markFile.mkdirs();
             try {
@@ -199,6 +292,14 @@ public class TomcatBoot {
             }
         }
         return markFile;
+    }
+
+    protected void waitForExistingServerShuwdown() {
+        try {
+            Thread.sleep(300L); // for Tomcat early catching port
+        } catch (InterruptedException e) {
+            throw new IllegalStateException("Failed to sleep the thread.", e);
+        }
     }
 
     protected String buildMarkFilePath() {
@@ -227,7 +328,7 @@ public class TomcatBoot {
     }
 
     protected long getShuwdownHookWaitMillis() {
-        return 700L; // for Tomcat early catching port
+        return 300L; // for Tomcat early catching port
     }
 
     // -----------------------------------------------------
