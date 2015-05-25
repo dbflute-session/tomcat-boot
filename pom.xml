@@ -8,7 +8,7 @@
 	<packaging>jar</packaging>
 
 	<name>Tomcat Boot</name>
-	<description>boot library for web application by Jetty</description>
+	<description>boot library for web application by Tomcat</description>
 	<url>http://dbflute.org</url>
 	<inceptionYear>2015</inceptionYear>
 
@@ -40,7 +40,7 @@
 
 	<issueManagement>
 		<system>Github</system>
-		<url>https://github.com/dbflute-session/lasta-jetty-boot/issues</url>
+		<url>https://github.com/dbflute-session/tomcat-boot/issues</url>
 	</issueManagement>
 	<mailingLists>
 		<mailingList>
@@ -53,9 +53,9 @@
 	</mailingLists>
 
 	<scm>
-		<connection>scm:git:git@github.com:dbflute-session/lasta-jetty-boot.git</connection>
-		<developerConnection>scm:git:git@github.com:dbflute-session/lasta-jetty-boot.git</developerConnection>
-		<url>git@github.com:dbflute-session/lasta-jetty-boot.git</url>
+		<connection>scm:git:git@github.com:dbflute-session/tomcat-boot.git</connection>
+		<developerConnection>scm:git:git@github.com:dbflute-session/tomcat-boot.git</developerConnection>
+		<url>git@github.com:dbflute-session/tomcat-boot.git</url>
 	</scm>
 
 	<parent>
@@ -133,7 +133,7 @@
 					<charset>UTF-8</charset>
 					<!-- you can avoid self-closing check e.g. br-tag (checked since java8) -->
 					<!-- fixed but comment-out for emergency deploy -->
-					<additionalparam>-Xdoclint:none</additionalparam>
+					<!-- <additionalparam>-Xdoclint:none</additionalparam> -->
 				</configuration>
 				<executions>
 					<execution>
@@ -243,7 +243,7 @@
 		<!-- utflute -->
         <dependency>
             <groupId>org.dbflute.utflute</groupId>
-            <artifactId>utflute-lasta-di</artifactId>
+            <artifactId>utflute-core</artifactId>
             <version>${utflute.version}</version>
             <scope>test</scope>
         </dependency>
