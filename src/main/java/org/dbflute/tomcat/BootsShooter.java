@@ -23,9 +23,11 @@ public class BootsShooter {
     protected final TomcatBoot[] boots;
 
     public BootsShooter(TomcatBoot... boots) {
-        if (boots == null || boots.length == 0) {
-            String msg = "The argument 'boots' should have one or more boots: " + boots;
-            throw new IllegalArgumentException(msg);
+        if (boots == null) {
+            throw new IllegalArgumentException("The argument 'boots' should not be null");
+        }
+        if (boots.length == 0) {
+            throw new IllegalArgumentException("The boots should have one or more elements but empty.");
         }
         this.boots = boots;
     }
