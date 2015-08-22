@@ -4,7 +4,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>org.dbflute.tomcat</groupId>
 	<artifactId>tomcat-boot</artifactId>
-	<version>0.3.3-SNAPSHOT</version>
+	<version>0.3.3-RC1</version>
 	<packaging>jar</packaging>
 
 	<name>Tomcat Boot</name>
@@ -16,7 +16,7 @@
 		<servlet.version>3.1.0</servlet.version>
 		<jsp.version>2.3.1</jsp.version>
 		<tomcat.version>8.0.21</tomcat.version>
-		<utflute.version>0.5.0-sp3</utflute.version>
+		<utflute.version>0.5.0-sp7</utflute.version>
 	</properties>
 
 	<licenses>
@@ -221,16 +221,6 @@
 		</dependency>
 
 		<!-- = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = -->
-		<!--                                                               Partner Library -->
-		<!--                                                               = = = = = = = = -->
-        <!-- logging -->
-		<dependency>
-			<groupId>org.slf4j</groupId>
-			<artifactId>slf4j-api</artifactId>
-			<version>1.7.12</version>
-		</dependency>
-
-		<!-- = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = -->
 		<!--                                                                       Testing -->
 		<!--                                                                       = = = = -->
         <!-- junit -->
@@ -248,6 +238,12 @@
             <scope>test</scope>
         </dependency>
 	    <!-- logging -->
+		<dependency>
+			<groupId>org.slf4j</groupId>
+			<artifactId>slf4j-api</artifactId>
+			<version>1.7.12</version>
+			<scope>test</scope>
+		</dependency>
 		<dependency>
 			<groupId>ch.qos.logback</groupId>
 			<artifactId>logback-classic</artifactId>

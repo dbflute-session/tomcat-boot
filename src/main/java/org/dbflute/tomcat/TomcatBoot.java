@@ -38,8 +38,6 @@ import org.apache.catalina.core.StandardContext;
 import org.apache.catalina.core.StandardHost;
 import org.apache.catalina.startup.ContextConfig;
 import org.apache.catalina.startup.Tomcat;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * @author jflute
@@ -49,8 +47,7 @@ public class TomcatBoot {
     // ===================================================================================
     //                                                                          Definition
     //                                                                          ==========
-    private static final Logger logger = LoggerFactory.getLogger(TomcatBoot.class);
-    protected static final String DEFAULT_MARK_DIR = "/tmp/dbflute/tomcatboot";
+    protected static final String DEFAULT_MARK_DIR = "/tmp/dbflute/tomcatboot"; // for shutdown hook
 
     // ===================================================================================
     //                                                                           Attribute
@@ -105,13 +102,13 @@ public class TomcatBoot {
     }
 
     public void startBoot() { // no wait
-        logger.info("...Booting the Tomcat: port={} contextPath={}", port, contextPath);
+        info("...Booting the Tomcat: port=" + port + " contextPath=" + contextPath);
         if (development) {
             registerShutdownHook();
         }
         prepareServer();
         final URI uri = startServer();
-        logger.info("Boot successful{}: uri={}", development ? " as development" : "", uri);
+        info("Boot successful" + (development ? " as development" : "") + ": uri=" + uri);
         if (development) {
             browseOnDesktop(uri);
         }
@@ -266,7 +263,7 @@ public class TomcatBoot {
         final File markFile = prepareMarkFile();
         final long lastModified = markFile.lastModified();
         final String exp = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss.SSS").format(new Date(lastModified));
-        logger.info("...Registering the shutdown hook for the Tomcat: lastModified=" + exp);
+        info("...Registering the shutdown hook for the Tomcat: lastModified=" + exp);
         new Thread(() -> {
             while (true) {
                 if (needsShutdown(markFile, lastModified)) {
@@ -315,7 +312,7 @@ public class TomcatBoot {
     }
 
     protected void shutdownForcedly() {
-        logger.info("...Shuting down the Tomcat forcedly: port=" + port);
+        info("...Shuting down the Tomcat forcedly: port=" + port);
         close();
     }
 
@@ -372,5 +369,19 @@ public class TomcatBoot {
         } catch (Exception e) {
             throw new IllegalStateException("Failed to stop the Tomcat.", e);
         }
+    }
+
+    // ===================================================================================
+    //                                                                             Logging
+    //                                                                             =======
+    protected void info(String msg) {
+        System.out.println(msg); // console as default not to depends specific logger
+    }
+
+    // ===================================================================================
+    //                                                                            Accessor
+    //                                                                            ========
+    public Tomcat getServer() {
+        return server;
     }
 }
