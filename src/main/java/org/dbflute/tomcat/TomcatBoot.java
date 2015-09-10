@@ -74,6 +74,11 @@ public class TomcatBoot {
         return this;
     }
 
+    public TomcatBoot asDevelopment(boolean development) {
+        this.development = development;
+        return this;
+    }
+
     public TomcatBoot browseOnDesktop() {
         assertDevelopmentState();
         browseOnDesktop = true;
