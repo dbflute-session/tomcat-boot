@@ -22,13 +22,10 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Date;
-import java.util.List;
-import java.util.Map.Entry;
 import java.util.Set;
+import java.util.stream.Collectors;
 
-import javax.servlet.ServletContainerInitializer;
 import javax.servlet.ServletException;
 
 import org.apache.catalina.Context;
@@ -38,6 +35,7 @@ import org.apache.catalina.core.StandardContext;
 import org.apache.catalina.core.StandardHost;
 import org.apache.catalina.startup.ContextConfig;
 import org.apache.catalina.startup.Tomcat;
+import org.apache.tomcat.util.descriptor.web.WebXml;
 
 /**
  * @author jflute
@@ -57,13 +55,14 @@ public class TomcatBoot {
     protected boolean development;
     protected boolean browseOnDesktop;
     protected boolean suppressShutdownHook;
+    protected boolean useAnnotationDetect;
+    protected boolean useMetaInfoResourceDetect;
 
     protected Tomcat server;
 
     // ===================================================================================
     //                                                                         Constructor
     //                                                                         ===========
-    // TODO jflute tomcat_boot: want to suppress annotation search
     public TomcatBoot(int port, String contextPath) {
         this.port = port;
         this.contextPath = contextPath;
@@ -97,6 +96,16 @@ public class TomcatBoot {
         }
     }
 
+    public TomcatBoot useAnnotationHandling() {
+        useAnnotationDetect = true;
+        return this;
+    }
+
+    public TomcatBoot useMetaInfoResourceDetect() {
+        useMetaInfoResourceDetect = true;
+        return this;
+    }
+
     // ===================================================================================
     //                                                                               Boot
     //                                                                              ======
@@ -120,7 +129,7 @@ public class TomcatBoot {
     }
 
     protected void prepareServer() {
-        server = new MyTomcat();
+        server = createTomcat();
         server.setPort(port);
         final Context webContext;
         try {
@@ -136,10 +145,37 @@ public class TomcatBoot {
         }
     }
 
-    // -----------------------------------------------------
-    //                                             My Tomcat
-    //                                             ---------
-    public static class MyTomcat extends Tomcat { // to remove org.eclipse.jetty
+    protected Tomcat createTomcat() {
+        final AnnotationHandling annotationHandling = prepareAnnotationHandling();
+        final MetaInfoResourceHandling metaInfoResourceHandling = prepareMetaInfoResourceHandling();
+        return newRhythmicalTomcat(annotationHandling, metaInfoResourceHandling);
+    }
+
+    protected RhythmicalTomcat newRhythmicalTomcat(AnnotationHandling annotationHandling,
+            MetaInfoResourceHandling metaInfoResourceHandling) {
+        return new RhythmicalTomcat(annotationHandling, metaInfoResourceHandling);
+    }
+
+    protected AnnotationHandling prepareAnnotationHandling() {
+        return useAnnotationDetect ? AnnotationHandling.USE : AnnotationHandling.NONE;
+    }
+
+    protected MetaInfoResourceHandling prepareMetaInfoResourceHandling() {
+        return useMetaInfoResourceDetect ? MetaInfoResourceHandling.USE : MetaInfoResourceHandling.NONE;
+    }
+
+    // ===================================================================================
+    //                                                                   Rhythmical Tomcat
+    //                                                                   =================
+    public static class RhythmicalTomcat extends Tomcat { // to remove org.eclipse.jetty
+
+        protected final AnnotationHandling annotationHandling;
+        protected final MetaInfoResourceHandling metaInfoResourceHandling;
+
+        public RhythmicalTomcat(AnnotationHandling annotationHandling, MetaInfoResourceHandling metaInfoResourceHandling) {
+            this.annotationHandling = annotationHandling;
+            this.metaInfoResourceHandling = metaInfoResourceHandling;
+        }
 
         // copied from super Tomcat because of private methods
         @Override
@@ -190,35 +226,67 @@ public class TomcatBoot {
         }
 
         protected ContextConfig createContextConfig() {
-            return new MyContextConfig();
+            return newRhythmicalContextConfig(annotationHandling, metaInfoResourceHandling);
+        }
+
+        protected RhythmicalContextConfig newRhythmicalContextConfig(AnnotationHandling annotationHandling,
+                MetaInfoResourceHandling metaInfoResourceHandling) {
+            return new RhythmicalContextConfig(annotationHandling, metaInfoResourceHandling);
         }
     }
 
-    public static class MyContextConfig extends ContextConfig {
+    public static class RhythmicalContextConfig extends ContextConfig {
+
+        protected final AnnotationHandling annotationHandling;
+        protected final MetaInfoResourceHandling metaInfoResourceHandling;
+
+        public RhythmicalContextConfig(AnnotationHandling annotationHandling, MetaInfoResourceHandling metaInfoResourceHandling) {
+            this.annotationHandling = annotationHandling;
+            this.metaInfoResourceHandling = metaInfoResourceHandling;
+        }
 
         @Override
         protected void processServletContainerInitializers() {
-            super.processServletContainerInitializers();
+            if (AnnotationHandling.USE.equals(annotationHandling)) {
+                super.processServletContainerInitializers();
+            }
             removeJettyInitializer();
         }
 
         protected void removeJettyInitializer() {
-            final List<ServletContainerInitializer> removedList = new ArrayList<ServletContainerInitializer>();
-            for (Entry<ServletContainerInitializer, Set<Class<?>>> entry : initializerClassMap.entrySet()) {
-                final ServletContainerInitializer initializer = entry.getKey();
-                if (initializer.getClass().getName().startsWith("org.eclipse.jetty")) {
-                    removedList.add(initializer);
-                }
-            }
-            for (ServletContainerInitializer initializer : removedList) {
+            initializerClassMap.keySet().stream().filter(initializer -> {
+                return initializer.getClass().getName().startsWith("org.eclipse.jetty");
+            }).collect(Collectors.toList()).forEach(initializer -> {
                 initializerClassMap.remove(initializer);
+            });
+        }
+
+        @Override
+        protected void processAnnotations(Set<WebXml> fragments, boolean handlesTypesOnly) {
+            if (AnnotationHandling.USE.equals(annotationHandling)) {
+                super.processAnnotations(fragments, handlesTypesOnly);
+            }
+        }
+
+        @Override
+        protected void processResourceJARs(Set<WebXml> fragments) {
+            if (MetaInfoResourceHandling.USE.equals(metaInfoResourceHandling)) {
+                super.processResourceJARs(fragments);
             }
         }
     }
 
-    // -----------------------------------------------------
-    //                                               Prepare
-    //                                               -------
+    public static enum AnnotationHandling {
+        USE, NONE
+    }
+
+    public static enum MetaInfoResourceHandling {
+        USE, NONE
+    }
+
+    // ===================================================================================
+    //                                                                        Prepare Path
+    //                                                                        ============
     protected String prepareWarPath() {
         final URL location = TomcatBoot.class.getProtectionDomain().getCodeSource().getLocation();
         String path;
@@ -238,9 +306,9 @@ public class TomcatBoot {
         return "./src/main/webapp/WEB-INF/web.xml";
     }
 
-    // -----------------------------------------------------
-    //                                                 Start
-    //                                                 -----
+    // ===================================================================================
+    //                                                                        Start Server
+    //                                                                        ============
     protected URI startServer() {
         try {
             server.start();
