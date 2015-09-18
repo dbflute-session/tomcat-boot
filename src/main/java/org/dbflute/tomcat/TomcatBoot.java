@@ -247,9 +247,9 @@ public class TomcatBoot {
 
         @Override
         protected void processServletContainerInitializers() {
-            if (AnnotationHandling.USE.equals(annotationHandling)) {
-                super.processServletContainerInitializers();
-            }
+            // initializers are needed for tld search
+            //if (AnnotationHandling.USE.equals(annotationHandling)) {
+            super.processServletContainerInitializers();
             removeJettyInitializer();
         }
 
