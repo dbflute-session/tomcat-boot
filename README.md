@@ -2,7 +2,7 @@
 simple boot library of Tomcat
 
 ```java
-new TomcatBoot(8097, "/catalog").asDevelopment().bootAwait();
+new TomcatBoot(8091, "/dockside").asDevelopment().bootAwait();
 ```
 
 No need to shutdown previous process when you restart it.  
@@ -14,7 +14,7 @@ Automatically shutdown before next process boot
 <dependency>
     <groupId>org.dbflute.tomcat</groupId>
     <artifactId>tomcat-boot</artifactId>
-    <version>0.3.4</version>
+    <version>0.3.6</version>
 </dependency>
 ```
 
