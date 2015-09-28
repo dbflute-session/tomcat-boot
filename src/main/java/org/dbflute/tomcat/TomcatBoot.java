@@ -23,6 +23,8 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -57,6 +59,8 @@ public class TomcatBoot {
     protected boolean suppressShutdownHook;
     protected boolean useAnnotationDetect;
     protected boolean useMetaInfoResourceDetect;
+    protected boolean useTldDetect;
+    protected boolean useWebFragmentsDetect;
 
     protected Tomcat server;
 
@@ -96,13 +100,29 @@ public class TomcatBoot {
         }
     }
 
+    @Deprecated
     public TomcatBoot useAnnotationHandling() {
+        useAnnotationDetect = true;
+        return this;
+    }
+
+    public TomcatBoot useAnnotationDetect() {
         useAnnotationDetect = true;
         return this;
     }
 
     public TomcatBoot useMetaInfoResourceDetect() {
         useMetaInfoResourceDetect = true;
+        return this;
+    }
+
+    public TomcatBoot useTldDetect() {
+        useTldDetect = true;
+        return this;
+    }
+
+    public TomcatBoot useWebFragmentsDetect() {
+        useWebFragmentsDetect = true;
         return this;
     }
 
@@ -122,7 +142,7 @@ public class TomcatBoot {
         }
         prepareServer();
         final URI uri = startServer();
-        info("Boot successful" + (development ? " as development" : "") + ": uri=" + uri);
+        info("Boot successful" + (development ? " as development" : "") + ": url -> " + uri);
         if (development) {
             browseOnDesktop(uri);
         }
@@ -148,20 +168,30 @@ public class TomcatBoot {
     protected Tomcat createTomcat() {
         final AnnotationHandling annotationHandling = prepareAnnotationHandling();
         final MetaInfoResourceHandling metaInfoResourceHandling = prepareMetaInfoResourceHandling();
-        return newRhythmicalTomcat(annotationHandling, metaInfoResourceHandling);
+        final TldHandling tldHandling = prepareTldHandling();
+        final WebFragmentsHandling webFragmentsHandling = prepareuseWebFragmentsHandling();
+        return newRhythmicalTomcat(annotationHandling, metaInfoResourceHandling, tldHandling, webFragmentsHandling);
     }
 
-    protected RhythmicalTomcat newRhythmicalTomcat(AnnotationHandling annotationHandling,
-            MetaInfoResourceHandling metaInfoResourceHandling) {
-        return new RhythmicalTomcat(annotationHandling, metaInfoResourceHandling);
+    protected RhythmicalTomcat newRhythmicalTomcat(AnnotationHandling annotationHandling, MetaInfoResourceHandling metaInfoResourceHandling,
+            TldHandling tldHandling, WebFragmentsHandling webFragmentsHandling) {
+        return new RhythmicalTomcat(annotationHandling, metaInfoResourceHandling, tldHandling, webFragmentsHandling);
     }
 
     protected AnnotationHandling prepareAnnotationHandling() {
-        return useAnnotationDetect ? AnnotationHandling.USE : AnnotationHandling.NONE;
+        return useAnnotationDetect ? AnnotationHandling.DETECT : AnnotationHandling.NONE;
     }
 
     protected MetaInfoResourceHandling prepareMetaInfoResourceHandling() {
-        return useMetaInfoResourceDetect ? MetaInfoResourceHandling.USE : MetaInfoResourceHandling.NONE;
+        return useMetaInfoResourceDetect ? MetaInfoResourceHandling.DETECT : MetaInfoResourceHandling.NONE;
+    }
+
+    protected TldHandling prepareTldHandling() {
+        return useTldDetect ? TldHandling.DETECT : TldHandling.NONE;
+    }
+
+    protected WebFragmentsHandling prepareuseWebFragmentsHandling() {
+        return useWebFragmentsDetect ? WebFragmentsHandling.DETECT : WebFragmentsHandling.NONE;
     }
 
     // ===================================================================================
@@ -171,10 +201,15 @@ public class TomcatBoot {
 
         protected final AnnotationHandling annotationHandling;
         protected final MetaInfoResourceHandling metaInfoResourceHandling;
+        protected final TldHandling tldHandling;
+        protected final WebFragmentsHandling webFragmentsHandling;
 
-        public RhythmicalTomcat(AnnotationHandling annotationHandling, MetaInfoResourceHandling metaInfoResourceHandling) {
+        public RhythmicalTomcat(AnnotationHandling annotationHandling, MetaInfoResourceHandling metaInfoResourceHandling,
+                TldHandling tldHandling, WebFragmentsHandling webFragmentsHandling) {
             this.annotationHandling = annotationHandling;
             this.metaInfoResourceHandling = metaInfoResourceHandling;
+            this.tldHandling = tldHandling;
+            this.webFragmentsHandling = webFragmentsHandling;
         }
 
         // copied from super Tomcat because of private methods
@@ -226,12 +261,12 @@ public class TomcatBoot {
         }
 
         protected ContextConfig createContextConfig() {
-            return newRhythmicalContextConfig(annotationHandling, metaInfoResourceHandling);
+            return newRhythmicalContextConfig(annotationHandling, metaInfoResourceHandling, tldHandling, webFragmentsHandling);
         }
 
         protected RhythmicalContextConfig newRhythmicalContextConfig(AnnotationHandling annotationHandling,
-                MetaInfoResourceHandling metaInfoResourceHandling) {
-            return new RhythmicalContextConfig(annotationHandling, metaInfoResourceHandling);
+                MetaInfoResourceHandling metaInfoResourceHandling, TldHandling tldHandling, WebFragmentsHandling webFragmentsHandling2) {
+            return new RhythmicalContextConfig(annotationHandling, metaInfoResourceHandling, tldHandling, webFragmentsHandling);
         }
     }
 
@@ -239,18 +274,38 @@ public class TomcatBoot {
 
         protected final AnnotationHandling annotationHandling;
         protected final MetaInfoResourceHandling metaInfoResourceHandling;
+        protected final TldHandling tldHandling;
+        protected final WebFragmentsHandling webFragmentsHandling;
 
-        public RhythmicalContextConfig(AnnotationHandling annotationHandling, MetaInfoResourceHandling metaInfoResourceHandling) {
+        public RhythmicalContextConfig(AnnotationHandling annotationHandling, MetaInfoResourceHandling metaInfoResourceHandling,
+                TldHandling tldHandling, WebFragmentsHandling webFragmentsHandling) {
             this.annotationHandling = annotationHandling;
             this.metaInfoResourceHandling = metaInfoResourceHandling;
+            this.tldHandling = tldHandling;
+            this.webFragmentsHandling = webFragmentsHandling;
+        }
+
+        @Override
+        protected Map<String, WebXml> processJarsForWebFragments(WebXml application) {
+            if (WebFragmentsHandling.DETECT.equals(webFragmentsHandling)) {
+                return super.processJarsForWebFragments(application);
+            }
+            return new HashMap<String, WebXml>(2);
         }
 
         @Override
         protected void processServletContainerInitializers() {
             // initializers are needed for tld search
-            //if (AnnotationHandling.USE.equals(annotationHandling)) {
-            super.processServletContainerInitializers();
+            if (isAvailableInitializers()) {
+                super.processServletContainerInitializers();
+            }
             removeJettyInitializer();
+        }
+
+        protected boolean isAvailableInitializers() {
+            return AnnotationHandling.DETECT.equals(annotationHandling) // e.g. Servlet annotation
+                    || TldHandling.DETECT.equals(tldHandling) // .tld in jar files
+                    ;
         }
 
         protected void removeJettyInitializer() {
@@ -263,25 +318,33 @@ public class TomcatBoot {
 
         @Override
         protected void processAnnotations(Set<WebXml> fragments, boolean handlesTypesOnly) {
-            if (AnnotationHandling.USE.equals(annotationHandling)) {
+            if (AnnotationHandling.DETECT.equals(annotationHandling)) {
                 super.processAnnotations(fragments, handlesTypesOnly);
             }
         }
 
         @Override
         protected void processResourceJARs(Set<WebXml> fragments) {
-            if (MetaInfoResourceHandling.USE.equals(metaInfoResourceHandling)) {
+            if (MetaInfoResourceHandling.DETECT.equals(metaInfoResourceHandling)) {
                 super.processResourceJARs(fragments);
             }
         }
     }
 
     public static enum AnnotationHandling {
-        USE, NONE
+        DETECT, NONE
     }
 
     public static enum MetaInfoResourceHandling {
-        USE, NONE
+        DETECT, NONE
+    }
+
+    public static enum TldHandling {
+        DETECT, NONE
+    }
+
+    public static enum WebFragmentsHandling {
+        DETECT, NONE
     }
 
     // ===================================================================================
