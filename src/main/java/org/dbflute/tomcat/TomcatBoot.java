@@ -15,23 +15,17 @@
  */
 package org.dbflute.tomcat;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
-import java.nio.ByteBuffer;
 import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.function.Consumer;
-import java.util.logging.LogManager;
-import java.util.regex.Pattern;
+import java.util.logging.Logger;
 
 import javax.servlet.ServletException;
 
@@ -46,6 +40,7 @@ import org.dbflute.tomcat.core.RhythmicalHandlingDef.MetaInfoResourceHandling;
 import org.dbflute.tomcat.core.RhythmicalHandlingDef.TldHandling;
 import org.dbflute.tomcat.core.RhythmicalHandlingDef.WebFragmentsHandling;
 import org.dbflute.tomcat.core.RhythmicalTomcat;
+import org.dbflute.tomcat.logging.ServerLoggingLoader;
 import org.dbflute.tomcat.logging.TomcatLoggingOption;
 
 /**
@@ -61,9 +56,15 @@ public class TomcatBoot {
     // ===================================================================================
     //                                                                           Attribute
     //                                                                           =========
+    // -----------------------------------------------------
+    //                                                 Basic
+    //                                                 -----
     protected final int port;
     protected final String contextPath;
 
+    // -----------------------------------------------------
+    //                                                Option
+    //                                                ------
     protected boolean development;
     protected boolean browseOnDesktop;
     protected boolean suppressShutdownHook;
@@ -75,8 +76,13 @@ public class TomcatBoot {
     protected String loggingFile;
     protected Consumer<TomcatLoggingOption> loggingOptionCall;
 
-    protected Tomcat server;
+    // -----------------------------------------------------
+    //                                              Stateful
+    //                                              --------
+    protected String resolvedConfigFile;
     protected Properties configProps;
+    protected Logger logger;
+    protected Tomcat server;
 
     // ===================================================================================
     //                                                                         Constructor
@@ -164,12 +170,52 @@ public class TomcatBoot {
     //                                                                               Boot
     //                                                                              ======
     public TomcatBoot bootAwait() {
-        startBoot();
+        ready();
+        go();
         await();
         return this;
     }
 
-    public void startBoot() { // no wait
+    // -----------------------------------------------------
+    //                                                 Ready
+    //                                                 -----
+    public void ready() { // public as parts
+        loadServerConfigIfNeeds();
+        loadServerLoggingIfNeeds();
+    }
+
+    protected void loadServerConfigIfNeeds() {
+        if (configFile == null) {
+            return;
+        }
+        configProps = new Properties();
+        resolvedConfigFile = resolveConfigEnvPath(configFile);
+        final InputStream ins = getClass().getClassLoader().getResourceAsStream(resolvedConfigFile);
+        if (ins == null) {
+            throw new IllegalStateException("Not found the config file in classpath: " + resolvedConfigFile);
+        }
+        try {
+            configProps.load(ins);
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to load the config resource as stream: " + resolvedConfigFile, e);
+        }
+    }
+
+    protected void loadServerLoggingIfNeeds() { // should be called after configuration
+        if (loggingFile != null) {
+            createServerLoggingLoader().loadServerLogging();
+            logger = Logger.getLogger(getClass().getPackage().getName());
+        }
+    }
+
+    protected ServerLoggingLoader createServerLoggingLoader() {
+        return new ServerLoggingLoader(loggingFile, loggingOptionCall, configProps, msg -> info(msg));
+    }
+
+    // -----------------------------------------------------
+    //                                                  Go
+    //                                                ------
+    public void go() { // public as parts, no wait
         info("...Booting the Tomcat: port=" + port + " contextPath=" + contextPath);
         if (development) {
             registerShutdownHook();
@@ -188,7 +234,6 @@ public class TomcatBoot {
         adjustServer();
         setupWebappContext();
         setupServerConfigIfNeeds();
-        setupServerLoggingIfNeeds();
     }
 
     protected void adjustServer() {
@@ -247,6 +292,20 @@ public class TomcatBoot {
         return useWebFragmentsDetect ? WebFragmentsHandling.DETECT : WebFragmentsHandling.NONE;
     }
 
+    // -----------------------------------------------------
+    //                                                 Await
+    //                                                 -----
+    public void await() { // public as parts
+        if (server == null) {
+            throw new IllegalStateException("server has not been started.");
+        }
+        try {
+            server.getServer().await();
+        } catch (Exception e) {
+            throw new IllegalStateException("server join failed.", e);
+        }
+    }
+
     // ===================================================================================
     //                                                                        Prepare Path
     //                                                                        ============
@@ -273,21 +332,10 @@ public class TomcatBoot {
     //                                                                Set up Configuration
     //                                                                ====================
     protected void setupServerConfigIfNeeds() {
-        if (configFile == null) {
+        if (configProps == null) {
             return;
         }
-        configProps = new Properties();
-        final String resolved = resolveConfigEnvPath(configFile);
-        final InputStream ins = getClass().getClassLoader().getResourceAsStream(resolved);
-        if (ins == null) {
-            throw new IllegalStateException("Not found the config file in classpath: " + resolved);
-        }
-        try {
-            configProps.load(ins);
-        } catch (IOException e) {
-            throw new IllegalStateException("Failed to load the config resource as stream: " + resolved, e);
-        }
-        info("...Reflecting configuration to server: " + resolved);
+        info("...Reflecting configuration to server: " + resolvedConfigFile);
         reflectConfigToServer(server, server.getConnector(), configProps);
     }
 
@@ -326,53 +374,6 @@ public class TomcatBoot {
 
     protected String getConfigEnv() { // null allowed
         return System.getProperty("lasta.env"); // uses Lasta Di's as default
-    }
-
-    // ===================================================================================
-    //                                                                      Set up Logging
-    //                                                                      ==============
-    protected void setupServerLoggingIfNeeds() { // should be called after configuration
-        if (loggingFile == null) {
-            return;
-        }
-        try (InputStream ins = getClass().getClassLoader().getResourceAsStream(loggingFile)) { // thanks, fess
-            if (ins == null) {
-                throw new IllegalStateException("Not found the logging file in classpath: " + loggingFile);
-            }
-            final String encoding = "UTF-8";
-            try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
-                final ByteBuffer buffer = ByteBuffer.allocate(4096);
-                final byte[] buf = buffer.array();
-                int len;
-                while ((len = ins.read(buf)) != -1) {
-                    out.write(buf, 0, len);
-                }
-                String text = out.toString(encoding);
-                final TomcatLoggingOption option = new TomcatLoggingOption();
-                loggingOptionCall.accept(option); // not null if loggingFile exists
-                final Map<String, String> replaceMap = option.getReplaceMap();
-                if (replaceMap != null) {
-                    for (Entry<String, String> entry : replaceMap.entrySet()) {
-                        final String key = entry.getKey();
-                        text = text.replaceAll(Pattern.quote("${" + key + "}"), entry.getValue());
-                    }
-                }
-                if (configProps != null) {
-                    for (Entry<Object, Object> entry : configProps.entrySet()) {
-                        final String key = (String) entry.getKey();
-                        text = text.replaceAll(Pattern.quote("${" + key + "}"), (String) entry.getValue());
-                    }
-                }
-                info("...Setting tomcat logging configuration: " + loggingFile);
-                LogManager.getLogManager().readConfiguration(new ByteArrayInputStream(text.getBytes(encoding)));
-            }
-        } catch (Exception e) {
-            handleLoggingSetupFailureException(e);
-        }
-    }
-
-    protected void handleLoggingSetupFailureException(Exception e) {
-        throw new IllegalStateException("Failed to load tomcat logging configuration: " + loggingFile, e);
     }
 
     // ===================================================================================
@@ -486,20 +487,6 @@ public class TomcatBoot {
     }
 
     // ===================================================================================
-    //                                                                               Await
-    //                                                                               =====
-    public void await() {
-        if (server == null) {
-            throw new IllegalStateException("server has not been started.");
-        }
-        try {
-            server.getServer().await();
-        } catch (Exception e) {
-            throw new IllegalStateException("server join failed.", e);
-        }
-    }
-
-    // ===================================================================================
     //                                                                               Close
     //                                                                               =====
     public void close() {
@@ -517,6 +504,14 @@ public class TomcatBoot {
     //                                                                         Information
     //                                                                         ===========
     protected void info(String msg) {
+        if (logger != null) {
+            logger.info(msg);
+        } else {
+            println(msg);
+        }
+    }
+
+    protected void println(String msg) {
         System.out.println(msg); // console as default not to depends specific logger
     }
 
