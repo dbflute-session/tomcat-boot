@@ -17,6 +17,7 @@ package org.dbflute.tomcat;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -25,6 +26,7 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -33,6 +35,7 @@ import javax.servlet.ServletException;
 import org.apache.catalina.Context;
 import org.apache.catalina.Globals;
 import org.apache.catalina.Host;
+import org.apache.catalina.connector.Connector;
 import org.apache.catalina.core.StandardContext;
 import org.apache.catalina.core.StandardHost;
 import org.apache.catalina.startup.ContextConfig;
@@ -54,6 +57,7 @@ public class TomcatBoot {
     //                                                                           =========
     protected final int port;
     protected final String contextPath;
+
     protected boolean development;
     protected boolean browseOnDesktop;
     protected boolean suppressShutdownHook;
@@ -61,6 +65,7 @@ public class TomcatBoot {
     protected boolean useMetaInfoResourceDetect;
     protected boolean useTldDetect;
     protected boolean useWebFragmentsDetect;
+    protected String configFile;
 
     protected Tomcat server;
 
@@ -126,6 +131,11 @@ public class TomcatBoot {
         return this;
     }
 
+    public TomcatBoot configure(String configFile) {
+        this.configFile = configFile;
+        return this;
+    }
+
     // ===================================================================================
     //                                                                               Boot
     //                                                                              ======
@@ -151,14 +161,19 @@ public class TomcatBoot {
     protected void prepareServer() {
         server = createTomcat();
         server.setPort(port);
-        final Context webContext;
+        setupWebappContext();
+        setupServerConfigIfNeeds();
+    }
+
+    protected void setupWebappContext() {
         try {
             final String warPath = prepareWarPath();
             if (warPath.endsWith(".war")) {
-                webContext = server.addWebapp(contextPath, warPath);
+                server.addWebapp(contextPath, warPath);
             } else {
-                webContext = server.addWebapp(contextPath, new File(prepareWebappPath()).getAbsolutePath());
-                webContext.getServletContext().setAttribute(Globals.ALT_DD_ATTR, prepareWebXmlPath());
+                final String docBase = new File(prepareWebappPath()).getAbsolutePath();
+                final Context context = server.addWebapp(contextPath, docBase);
+                context.getServletContext().setAttribute(Globals.ALT_DD_ATTR, prepareWebXmlPath());
             }
         } catch (ServletException e) {
             throw new IllegalStateException("Failed to set up web context.", e);
@@ -331,6 +346,7 @@ public class TomcatBoot {
         }
     }
 
+    // be enum because of other elements for future
     public static enum AnnotationHandling {
         DETECT, NONE
     }
@@ -367,6 +383,65 @@ public class TomcatBoot {
 
     protected String prepareWebXmlPath() {
         return "./src/main/webapp/WEB-INF/web.xml";
+    }
+
+    // ===================================================================================
+    //                                                                Set up Configuration
+    //                                                                ====================
+    protected void setupServerConfigIfNeeds() {
+        if (configFile == null) {
+            return;
+        }
+        final Properties props = new Properties();
+        final String resolved = resolveConfigEnvPath(configFile);
+        final InputStream ins = getClass().getClassLoader().getResourceAsStream(resolved);
+        if (ins == null) {
+            throw new IllegalStateException("Not found the config file in classpath: " + resolved);
+        }
+        try {
+            props.load(ins);
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to load the config resource as stream: " + resolved, e);
+        }
+        info("...Reflecting configuration to server: " + resolved);
+        reflectConfigToServer(server, server.getConnector(), props);
+    }
+
+    protected void reflectConfigToServer(Tomcat server, Connector connector, Properties props) { // you can override
+        final String uriEncoding = props.getProperty("tomcat.URIEncoding");
+        if (uriEncoding != null) {
+            info(" tomcat.URIEncoding = " + uriEncoding);
+            connector.setURIEncoding(uriEncoding);
+        }
+        final String useBodyEncodingForURI = props.getProperty("tomcat.useBodyEncodingForURI");
+        if (useBodyEncodingForURI != null) {
+            info(" tomcat.useBodyEncodingForURI = " + useBodyEncodingForURI);
+            connector.setUseBodyEncodingForURI(useBodyEncodingForURI.equalsIgnoreCase("true"));
+        }
+    }
+
+    // -----------------------------------------------------
+    //                                   Resolve Environment
+    //                                   -------------------
+    protected String resolveConfigEnvPath(String envPath) { // almost same as Lasta Di's logic
+        if (envPath == null) {
+            throw new IllegalArgumentException("The argument 'envPath' should not be null.");
+        }
+        final String configEnv = getConfigEnv();
+        final String envMark = "_env.";
+        if (configEnv != null && envPath.contains(envMark)) {
+            // e.g. maihama_env.properties to maihama_env_production.properties
+            final int markIndex = envPath.indexOf(envMark);
+            final String front = envPath.substring(0, markIndex);
+            final String rear = envPath.substring(markIndex + envMark.length());
+            return front + "_env_" + configEnv + "." + rear;
+        } else {
+            return envPath;
+        }
+    }
+
+    protected String getConfigEnv() { // null allowed
+        return System.getProperty("lasta.env"); // uses Lasta Di's as default
     }
 
     // ===================================================================================
