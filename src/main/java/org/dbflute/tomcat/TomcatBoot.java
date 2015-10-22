@@ -161,8 +161,21 @@ public class TomcatBoot {
     protected void prepareServer() {
         server = createTomcat();
         server.setPort(port);
+        adjustServer();
         setupWebappContext();
         setupServerConfigIfNeeds();
+    }
+
+    protected void adjustServer() {
+        disableUnpackWARs();
+    }
+
+    protected void disableUnpackWARs() {
+        final Host host = server.getHost();
+        if (host instanceof StandardHost) {
+            // suppress ExpandWar's IOException, originally embedded so unneeded
+            ((StandardHost) host).setUnpackWARs(false);
+        }
     }
 
     protected void setupWebappContext() {
