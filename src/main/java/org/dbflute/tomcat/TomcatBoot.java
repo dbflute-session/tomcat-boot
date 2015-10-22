@@ -366,9 +366,13 @@ public class TomcatBoot {
                 info("...Setting tomcat logging configuration: " + loggingFile);
                 LogManager.getLogManager().readConfiguration(new ByteArrayInputStream(text.getBytes(encoding)));
             }
-        } catch (IOException e) {
-            info("Failed to load tomcat logging configuration: " + loggingFile, e);
+        } catch (Exception e) {
+            handleLoggingSetupFailureException(e);
         }
+    }
+
+    protected void handleLoggingSetupFailureException(Exception e) {
+        throw new IllegalStateException("Failed to load tomcat logging configuration: " + loggingFile, e);
     }
 
     // ===================================================================================
@@ -510,15 +514,10 @@ public class TomcatBoot {
     }
 
     // ===================================================================================
-    //                                                                             Logging
-    //                                                                             =======
+    //                                                                         Information
+    //                                                                         ===========
     protected void info(String msg) {
         System.out.println(msg); // console as default not to depends specific logger
-    }
-
-    protected void info(String msg, Throwable cause) {
-        info(msg);
-        cause.printStackTrace();
     }
 
     // ===================================================================================
