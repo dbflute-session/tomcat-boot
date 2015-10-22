@@ -15,6 +15,8 @@
  */
 package org.dbflute.tomcat;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -22,12 +24,17 @@ import java.lang.reflect.InvocationTargetException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.nio.ByteBuffer;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.Set;
+import java.util.function.Consumer;
+import java.util.logging.LogManager;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import javax.servlet.ServletException;
@@ -66,8 +73,11 @@ public class TomcatBoot {
     protected boolean useTldDetect;
     protected boolean useWebFragmentsDetect;
     protected String configFile;
+    protected String loggingFile;
+    protected Consumer<TomcatLoggingOption> loggingOptionCall;
 
     protected Tomcat server;
+    protected Properties configProps;
 
     // ===================================================================================
     //                                                                         Constructor
@@ -132,7 +142,22 @@ public class TomcatBoot {
     }
 
     public TomcatBoot configure(String configFile) {
+        if (configFile == null || configFile.trim().length() == 0) {
+            throw new IllegalArgumentException("The argument 'configFile' should not be null or empty: " + configFile);
+        }
         this.configFile = configFile;
+        return this;
+    }
+
+    public TomcatBoot logging(String loggingFile, Consumer<TomcatLoggingOption> opLambda) {
+        if (loggingFile == null || loggingFile.trim().length() == 0) {
+            throw new IllegalArgumentException("The argument 'loggingFile' should not be null or empty: " + loggingFile);
+        }
+        if (opLambda == null) {
+            throw new IllegalArgumentException("The argument 'opLambda' should not be null.");
+        }
+        this.loggingFile = loggingFile;
+        this.loggingOptionCall = opLambda;
         return this;
     }
 
@@ -164,6 +189,7 @@ public class TomcatBoot {
         adjustServer();
         setupWebappContext();
         setupServerConfigIfNeeds();
+        setupServerLoggingIfNeeds();
     }
 
     protected void adjustServer() {
@@ -405,19 +431,19 @@ public class TomcatBoot {
         if (configFile == null) {
             return;
         }
-        final Properties props = new Properties();
+        configProps = new Properties();
         final String resolved = resolveConfigEnvPath(configFile);
         final InputStream ins = getClass().getClassLoader().getResourceAsStream(resolved);
         if (ins == null) {
             throw new IllegalStateException("Not found the config file in classpath: " + resolved);
         }
         try {
-            props.load(ins);
+            configProps.load(ins);
         } catch (IOException e) {
             throw new IllegalStateException("Failed to load the config resource as stream: " + resolved, e);
         }
         info("...Reflecting configuration to server: " + resolved);
-        reflectConfigToServer(server, server.getConnector(), props);
+        reflectConfigToServer(server, server.getConnector(), configProps);
     }
 
     protected void reflectConfigToServer(Tomcat server, Connector connector, Properties props) { // you can override
@@ -455,6 +481,72 @@ public class TomcatBoot {
 
     protected String getConfigEnv() { // null allowed
         return System.getProperty("lasta.env"); // uses Lasta Di's as default
+    }
+
+    // ===================================================================================
+    //                                                                      Set up Logging
+    //                                                                      ==============
+    protected void setupServerLoggingIfNeeds() { // should be called after configuration
+        if (loggingFile == null) {
+            return;
+        }
+        try (InputStream ins = getClass().getClassLoader().getResourceAsStream(loggingFile)) { // thanks, fess
+            if (ins == null) {
+                throw new IllegalStateException("Not found the logging file in classpath: " + loggingFile);
+            }
+            final String encoding = "UTF-8";
+            try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+                final ByteBuffer buffer = ByteBuffer.allocate(4096);
+                final byte[] buf = buffer.array();
+                int len;
+                while ((len = ins.read(buf)) != -1) {
+                    out.write(buf, 0, len);
+                }
+                String text = out.toString(encoding);
+                final TomcatLoggingOption option = new TomcatLoggingOption();
+                loggingOptionCall.accept(option); // not null if loggingFile exists
+                final Map<String, String> replaceMap = option.getReplaceMap();
+                if (replaceMap != null) {
+                    for (Entry<String, String> entry : replaceMap.entrySet()) {
+                        final String key = entry.getKey();
+                        text = text.replaceAll(Pattern.quote("${" + key + "}"), entry.getValue());
+                    }
+                }
+                if (configProps != null) {
+                    for (Entry<Object, Object> entry : configProps.entrySet()) {
+                        final String key = (String) entry.getKey();
+                        text = text.replaceAll(Pattern.quote("${" + key + "}"), (String) entry.getValue());
+                    }
+                }
+                info("...Setting tomcat logging configuration: " + loggingFile);
+                LogManager.getLogManager().readConfiguration(new ByteArrayInputStream(text.getBytes(encoding)));
+            }
+        } catch (IOException e) {
+            info("Failed to load tomcat logging configuration: " + loggingFile, e);
+        }
+    }
+
+    public static class TomcatLoggingOption {
+
+        protected Map<String, String> replaceMap;
+
+        public TomcatLoggingOption replace(String key, String value) {
+            if (key == null) {
+                throw new IllegalArgumentException("The argument 'key' should not be null.");
+            }
+            if (value == null) {
+                throw new IllegalArgumentException("The argument 'value' should not be null.");
+            }
+            if (replaceMap == null) {
+                replaceMap = new HashMap<String, String>();
+            }
+            replaceMap.put(key, value);
+            return this;
+        }
+
+        public Map<String, String> getReplaceMap() { // null allowed
+            return replaceMap;
+        }
     }
 
     // ===================================================================================
@@ -600,6 +692,11 @@ public class TomcatBoot {
     //                                                                             =======
     protected void info(String msg) {
         System.out.println(msg); // console as default not to depends specific logger
+    }
+
+    protected void info(String msg, Throwable cause) {
+        info(msg);
+        cause.printStackTrace();
     }
 
     // ===================================================================================
