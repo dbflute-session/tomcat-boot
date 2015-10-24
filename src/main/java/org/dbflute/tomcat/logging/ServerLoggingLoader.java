@@ -51,6 +51,7 @@ public class ServerLoggingLoader {
             if (ins == null) {
                 if (option.isIgnoreNoFile()) {
                     coreLogger.accept("*Not found the logging file in classpath, but continue: " + loggingFile);
+                    return;
                 } else {
                     throw new IllegalStateException("Not found the logging file in classpath: " + loggingFile);
                 }
