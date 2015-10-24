@@ -24,6 +24,7 @@ import java.util.Map;
 public class TomcatLoggingOption {
 
     protected Map<String, String> replaceMap;
+    protected boolean ignoreNoFile;
 
     public TomcatLoggingOption replace(String key, String value) {
         if (key == null) {
@@ -39,7 +40,16 @@ public class TomcatLoggingOption {
         return this;
     }
 
+    public TomcatLoggingOption ignoreNoFile() {
+        this.ignoreNoFile = true;
+        return this;
+    }
+
     public Map<String, String> getReplaceMap() { // null allowed
         return replaceMap;
+    }
+
+    public boolean isIgnoreNoFile() {
+        return ignoreNoFile;
     }
 }

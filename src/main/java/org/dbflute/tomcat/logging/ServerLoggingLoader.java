@@ -46,8 +46,14 @@ public class ServerLoggingLoader {
 
     public void loadServerLogging() { // should be called after configuration
         try (InputStream ins = getClass().getClassLoader().getResourceAsStream(loggingFile)) { // thanks, fess
+            final TomcatLoggingOption option = new TomcatLoggingOption();
+            loggingOptionCall.accept(option);
             if (ins == null) {
-                throw new IllegalStateException("Not found the logging file in classpath: " + loggingFile);
+                if (option.isIgnoreNoFile()) {
+                    coreLogger.accept("*Not found the logging file in classpath, but continue: " + loggingFile);
+                } else {
+                    throw new IllegalStateException("Not found the logging file in classpath: " + loggingFile);
+                }
             }
             final String encoding = "UTF-8";
             try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
@@ -58,8 +64,6 @@ public class ServerLoggingLoader {
                     out.write(buf, 0, len);
                 }
                 String text = out.toString(encoding);
-                final TomcatLoggingOption option = new TomcatLoggingOption();
-                loggingOptionCall.accept(option);
                 final Map<String, String> replaceMap = option.getReplaceMap();
                 if (replaceMap != null) {
                     for (Entry<String, String> entry : replaceMap.entrySet()) {
