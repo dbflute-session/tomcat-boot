@@ -507,7 +507,10 @@ public class TomcatBoot {
         if (logger != null) {
             logger.info(msg);
         } else {
-            println(msg);
+            if (loggingFile == null) { // no logger settings
+                println(msg); // as default
+            }
+            // no output before logger ready
         }
     }
 
