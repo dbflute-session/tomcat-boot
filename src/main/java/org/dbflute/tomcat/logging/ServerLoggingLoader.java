@@ -78,7 +78,8 @@ public class ServerLoggingLoader {
                         text = text.replaceAll(Pattern.quote("${" + key + "}"), (String) entry.getValue());
                     }
                 }
-                coreLogger.accept("...Setting tomcat logging configuration: " + loggingFile);
+                // want to keep no console if logging exists
+                //coreLogger.accept("...Setting tomcat logging configuration: " + loggingFile);
                 LogManager.getLogManager().readConfiguration(new ByteArrayInputStream(text.getBytes(encoding)));
             }
         } catch (Exception e) {
