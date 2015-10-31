@@ -209,7 +209,7 @@ public class TomcatBoot {
     }
 
     protected ServerLoggingLoader createServerLoggingLoader() {
-        return new ServerLoggingLoader(loggingFile, loggingOptionCall, configProps, msg -> info(msg));
+        return new ServerLoggingLoader(loggingFile, loggingOptionCall, configProps, msg -> println(msg));
     }
 
     // -----------------------------------------------------
