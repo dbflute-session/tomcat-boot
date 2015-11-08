@@ -120,12 +120,6 @@ public class TomcatBoot {
         }
     }
 
-    @Deprecated
-    public TomcatBoot useAnnotationHandling() {
-        useAnnotationDetect = true;
-        return this;
-    }
-
     public TomcatBoot useAnnotationDetect() {
         useAnnotationDetect = true;
         return this;
