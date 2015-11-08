@@ -17,27 +17,31 @@ package org.dbflute.tomcat;
 
 import java.io.File;
 import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
+import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
+import java.util.Properties;
+import java.util.function.Consumer;
+import java.util.logging.Logger;
 
 import javax.servlet.ServletException;
 
 import org.apache.catalina.Context;
 import org.apache.catalina.Globals;
 import org.apache.catalina.Host;
-import org.apache.catalina.core.StandardContext;
+import org.apache.catalina.connector.Connector;
 import org.apache.catalina.core.StandardHost;
-import org.apache.catalina.startup.ContextConfig;
 import org.apache.catalina.startup.Tomcat;
-import org.apache.tomcat.util.descriptor.web.WebXml;
+import org.dbflute.tomcat.core.RhythmicalHandlingDef.AnnotationHandling;
+import org.dbflute.tomcat.core.RhythmicalHandlingDef.MetaInfoResourceHandling;
+import org.dbflute.tomcat.core.RhythmicalHandlingDef.TldHandling;
+import org.dbflute.tomcat.core.RhythmicalHandlingDef.WebFragmentsHandling;
+import org.dbflute.tomcat.core.RhythmicalTomcat;
+import org.dbflute.tomcat.logging.ServerLoggingLoader;
+import org.dbflute.tomcat.logging.TomcatLoggingOption;
 
 /**
  * @author jflute
@@ -52,8 +56,15 @@ public class TomcatBoot {
     // ===================================================================================
     //                                                                           Attribute
     //                                                                           =========
+    // -----------------------------------------------------
+    //                                                 Basic
+    //                                                 -----
     protected final int port;
     protected final String contextPath;
+
+    // -----------------------------------------------------
+    //                                                Option
+    //                                                ------
     protected boolean development;
     protected boolean browseOnDesktop;
     protected boolean suppressShutdownHook;
@@ -61,7 +72,16 @@ public class TomcatBoot {
     protected boolean useMetaInfoResourceDetect;
     protected boolean useTldDetect;
     protected boolean useWebFragmentsDetect;
+    protected String configFile;
+    protected String loggingFile;
+    protected Consumer<TomcatLoggingOption> loggingOptionCall;
 
+    // -----------------------------------------------------
+    //                                              Stateful
+    //                                              --------
+    protected String resolvedConfigFile;
+    protected Properties configProps;
+    protected Logger logger;
     protected Tomcat server;
 
     // ===================================================================================
@@ -100,12 +120,6 @@ public class TomcatBoot {
         }
     }
 
-    @Deprecated
-    public TomcatBoot useAnnotationHandling() {
-        useAnnotationDetect = true;
-        return this;
-    }
-
     public TomcatBoot useAnnotationDetect() {
         useAnnotationDetect = true;
         return this;
@@ -126,16 +140,76 @@ public class TomcatBoot {
         return this;
     }
 
+    public TomcatBoot configure(String configFile) {
+        if (configFile == null || configFile.trim().length() == 0) {
+            throw new IllegalArgumentException("The argument 'configFile' should not be null or empty: " + configFile);
+        }
+        this.configFile = configFile;
+        return this;
+    }
+
+    public TomcatBoot logging(String loggingFile, Consumer<TomcatLoggingOption> opLambda) {
+        if (loggingFile == null || loggingFile.trim().length() == 0) {
+            throw new IllegalArgumentException("The argument 'loggingFile' should not be null or empty: " + loggingFile);
+        }
+        if (opLambda == null) {
+            throw new IllegalArgumentException("The argument 'opLambda' should not be null.");
+        }
+        this.loggingFile = loggingFile;
+        this.loggingOptionCall = opLambda;
+        return this;
+    }
+
     // ===================================================================================
     //                                                                               Boot
     //                                                                              ======
     public TomcatBoot bootAwait() {
-        startBoot();
+        ready();
+        go();
         await();
         return this;
     }
 
-    public void startBoot() { // no wait
+    // -----------------------------------------------------
+    //                                                 Ready
+    //                                                 -----
+    public void ready() { // public as parts
+        loadServerConfigIfNeeds();
+        loadServerLoggingIfNeeds();
+    }
+
+    protected void loadServerConfigIfNeeds() {
+        if (configFile == null) {
+            return;
+        }
+        configProps = new Properties();
+        resolvedConfigFile = resolveConfigEnvPath(configFile);
+        final InputStream ins = getClass().getClassLoader().getResourceAsStream(resolvedConfigFile);
+        if (ins == null) {
+            throw new IllegalStateException("Not found the config file in classpath: " + resolvedConfigFile);
+        }
+        try {
+            configProps.load(ins);
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to load the config resource as stream: " + resolvedConfigFile, e);
+        }
+    }
+
+    protected void loadServerLoggingIfNeeds() { // should be called after configuration
+        if (loggingFile != null) {
+            createServerLoggingLoader().loadServerLogging();
+            logger = Logger.getLogger(getClass().getPackage().getName());
+        }
+    }
+
+    protected ServerLoggingLoader createServerLoggingLoader() {
+        return new ServerLoggingLoader(loggingFile, loggingOptionCall, configProps, msg -> println(msg));
+    }
+
+    // -----------------------------------------------------
+    //                                                  Go
+    //                                                ------
+    public void go() { // public as parts, no wait
         info("...Booting the Tomcat: port=" + port + " contextPath=" + contextPath);
         if (development) {
             registerShutdownHook();
@@ -151,14 +225,32 @@ public class TomcatBoot {
     protected void prepareServer() {
         server = createTomcat();
         server.setPort(port);
-        final Context webContext;
+        adjustServer();
+        setupWebappContext();
+        setupServerConfigIfNeeds();
+    }
+
+    protected void adjustServer() {
+        disableUnpackWARs();
+    }
+
+    protected void disableUnpackWARs() {
+        final Host host = server.getHost();
+        if (host instanceof StandardHost) {
+            // suppress ExpandWar's IOException, originally embedded so unneeded
+            ((StandardHost) host).setUnpackWARs(false);
+        }
+    }
+
+    protected void setupWebappContext() {
         try {
             final String warPath = prepareWarPath();
             if (warPath.endsWith(".war")) {
-                webContext = server.addWebapp(contextPath, warPath);
+                server.addWebapp(contextPath, warPath);
             } else {
-                webContext = server.addWebapp(contextPath, new File(prepareWebappPath()).getAbsolutePath());
-                webContext.getServletContext().setAttribute(Globals.ALT_DD_ATTR, prepareWebXmlPath());
+                final String docBase = new File(prepareWebappPath()).getAbsolutePath();
+                final Context context = server.addWebapp(contextPath, docBase);
+                context.getServletContext().setAttribute(Globals.ALT_DD_ATTR, prepareWebXmlPath());
             }
         } catch (ServletException e) {
             throw new IllegalStateException("Failed to set up web context.", e);
@@ -194,157 +286,18 @@ public class TomcatBoot {
         return useWebFragmentsDetect ? WebFragmentsHandling.DETECT : WebFragmentsHandling.NONE;
     }
 
-    // ===================================================================================
-    //                                                                   Rhythmical Tomcat
-    //                                                                   =================
-    public static class RhythmicalTomcat extends Tomcat { // to remove org.eclipse.jetty
-
-        protected final AnnotationHandling annotationHandling;
-        protected final MetaInfoResourceHandling metaInfoResourceHandling;
-        protected final TldHandling tldHandling;
-        protected final WebFragmentsHandling webFragmentsHandling;
-
-        public RhythmicalTomcat(AnnotationHandling annotationHandling, MetaInfoResourceHandling metaInfoResourceHandling,
-                TldHandling tldHandling, WebFragmentsHandling webFragmentsHandling) {
-            this.annotationHandling = annotationHandling;
-            this.metaInfoResourceHandling = metaInfoResourceHandling;
-            this.tldHandling = tldHandling;
-            this.webFragmentsHandling = webFragmentsHandling;
+    // -----------------------------------------------------
+    //                                                 Await
+    //                                                 -----
+    public void await() { // public as parts
+        if (server == null) {
+            throw new IllegalStateException("server has not been started.");
         }
-
-        // copied from super Tomcat because of private methods
-        @Override
-        public Context addWebapp(Host host, String contextPath, String name, String docBase) {
-            // quit
-            //silence(host, contextPath);
-
-            final Context ctx = createContext(host, contextPath);
-            ctx.setPath(contextPath);
-            ctx.setDocBase(docBase);
-            ctx.addLifecycleListener(newDefaultWebXmlListener());
-            ctx.setConfigFile(getWebappConfigFile(docBase, contextPath));
-
-            final ContextConfig ctxCfg = createContextConfig(); // *extension point
-            ctx.addLifecycleListener(ctxCfg);
-
-            // prevent it from looking ( if it finds one - it'll have dup error )
-            ctxCfg.setDefaultWebXml(noDefaultWebXmlPath());
-
-            if (host == null) {
-                getHost().addChild(ctx);
-            } else {
-                host.addChild(ctx);
-            }
-
-            return ctx;
+        try {
+            server.getServer().await();
+        } catch (Exception e) {
+            throw new IllegalStateException("server join failed.", e);
         }
-
-        protected DefaultWebXmlListener newDefaultWebXmlListener() {
-            return new DefaultWebXmlListener();
-        }
-
-        protected Context createContext(Host host, String url) {
-            String contextClass = StandardContext.class.getName();
-            if (host == null) {
-                host = this.getHost();
-            }
-            if (host instanceof StandardHost) {
-                contextClass = ((StandardHost) host).getContextClass();
-            }
-            try {
-                return (Context) Class.forName(contextClass).getConstructor().newInstance();
-            } catch (InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException
-                    | NoSuchMethodException | SecurityException | ClassNotFoundException e) {
-                String msg = "Can't instantiate context-class " + contextClass + " for host " + host + " and url " + url;
-                throw new IllegalArgumentException(msg, e);
-            }
-        }
-
-        protected ContextConfig createContextConfig() {
-            return newRhythmicalContextConfig(annotationHandling, metaInfoResourceHandling, tldHandling, webFragmentsHandling);
-        }
-
-        protected RhythmicalContextConfig newRhythmicalContextConfig(AnnotationHandling annotationHandling,
-                MetaInfoResourceHandling metaInfoResourceHandling, TldHandling tldHandling, WebFragmentsHandling webFragmentsHandling2) {
-            return new RhythmicalContextConfig(annotationHandling, metaInfoResourceHandling, tldHandling, webFragmentsHandling);
-        }
-    }
-
-    public static class RhythmicalContextConfig extends ContextConfig {
-
-        protected final AnnotationHandling annotationHandling;
-        protected final MetaInfoResourceHandling metaInfoResourceHandling;
-        protected final TldHandling tldHandling;
-        protected final WebFragmentsHandling webFragmentsHandling;
-
-        public RhythmicalContextConfig(AnnotationHandling annotationHandling, MetaInfoResourceHandling metaInfoResourceHandling,
-                TldHandling tldHandling, WebFragmentsHandling webFragmentsHandling) {
-            this.annotationHandling = annotationHandling;
-            this.metaInfoResourceHandling = metaInfoResourceHandling;
-            this.tldHandling = tldHandling;
-            this.webFragmentsHandling = webFragmentsHandling;
-        }
-
-        @Override
-        protected Map<String, WebXml> processJarsForWebFragments(WebXml application) {
-            if (WebFragmentsHandling.DETECT.equals(webFragmentsHandling)) {
-                return super.processJarsForWebFragments(application);
-            }
-            return new HashMap<String, WebXml>(2);
-        }
-
-        @Override
-        protected void processServletContainerInitializers() {
-            // initializers are needed for tld search
-            if (isAvailableInitializers()) {
-                super.processServletContainerInitializers();
-            }
-            removeJettyInitializer();
-        }
-
-        protected boolean isAvailableInitializers() {
-            return AnnotationHandling.DETECT.equals(annotationHandling) // e.g. Servlet annotation
-                    || TldHandling.DETECT.equals(tldHandling) // .tld in jar files
-                    ;
-        }
-
-        protected void removeJettyInitializer() {
-            initializerClassMap.keySet().stream().filter(initializer -> {
-                return initializer.getClass().getName().startsWith("org.eclipse.jetty");
-            }).collect(Collectors.toList()).forEach(initializer -> {
-                initializerClassMap.remove(initializer);
-            });
-        }
-
-        @Override
-        protected void processAnnotations(Set<WebXml> fragments, boolean handlesTypesOnly) {
-            if (AnnotationHandling.DETECT.equals(annotationHandling)) {
-                super.processAnnotations(fragments, handlesTypesOnly);
-            }
-        }
-
-        @Override
-        protected void processResourceJARs(Set<WebXml> fragments) {
-            if (MetaInfoResourceHandling.DETECT.equals(metaInfoResourceHandling)) {
-                super.processResourceJARs(fragments);
-            }
-        }
-    }
-
-    public static enum AnnotationHandling {
-        DETECT, NONE
-    }
-
-    public static enum MetaInfoResourceHandling {
-        DETECT, NONE
-    }
-
-    public static enum TldHandling {
-        DETECT, NONE
-    }
-
-    public static enum WebFragmentsHandling {
-        DETECT, NONE
     }
 
     // ===================================================================================
@@ -367,6 +320,54 @@ public class TomcatBoot {
 
     protected String prepareWebXmlPath() {
         return "./src/main/webapp/WEB-INF/web.xml";
+    }
+
+    // ===================================================================================
+    //                                                                Set up Configuration
+    //                                                                ====================
+    protected void setupServerConfigIfNeeds() {
+        if (configProps == null) {
+            return;
+        }
+        info("...Reflecting configuration to server: " + resolvedConfigFile);
+        reflectConfigToServer(server, server.getConnector(), configProps);
+    }
+
+    protected void reflectConfigToServer(Tomcat server, Connector connector, Properties props) { // you can override
+        final String uriEncoding = props.getProperty("tomcat.URIEncoding");
+        if (uriEncoding != null) {
+            info(" tomcat.URIEncoding = " + uriEncoding);
+            connector.setURIEncoding(uriEncoding);
+        }
+        final String useBodyEncodingForURI = props.getProperty("tomcat.useBodyEncodingForURI");
+        if (useBodyEncodingForURI != null) {
+            info(" tomcat.useBodyEncodingForURI = " + useBodyEncodingForURI);
+            connector.setUseBodyEncodingForURI(useBodyEncodingForURI.equalsIgnoreCase("true"));
+        }
+    }
+
+    // -----------------------------------------------------
+    //                                   Resolve Environment
+    //                                   -------------------
+    protected String resolveConfigEnvPath(String envPath) { // almost same as Lasta Di's logic
+        if (envPath == null) {
+            throw new IllegalArgumentException("The argument 'envPath' should not be null.");
+        }
+        final String configEnv = getConfigEnv();
+        final String envMark = "_env.";
+        if (configEnv != null && envPath.contains(envMark)) {
+            // e.g. maihama_env.properties to maihama_env_production.properties
+            final int markIndex = envPath.indexOf(envMark);
+            final String front = envPath.substring(0, markIndex);
+            final String rear = envPath.substring(markIndex + envMark.length());
+            return front + "_env_" + configEnv + "." + rear;
+        } else {
+            return envPath;
+        }
+    }
+
+    protected String getConfigEnv() { // null allowed
+        return System.getProperty("lasta.env"); // uses Lasta Di's as default
     }
 
     // ===================================================================================
@@ -480,20 +481,6 @@ public class TomcatBoot {
     }
 
     // ===================================================================================
-    //                                                                               Await
-    //                                                                               =====
-    public void await() {
-        if (server == null) {
-            throw new IllegalStateException("server has not been started.");
-        }
-        try {
-            server.getServer().await();
-        } catch (Exception e) {
-            throw new IllegalStateException("server join failed.", e);
-        }
-    }
-
-    // ===================================================================================
     //                                                                               Close
     //                                                                               =====
     public void close() {
@@ -508,9 +495,20 @@ public class TomcatBoot {
     }
 
     // ===================================================================================
-    //                                                                             Logging
-    //                                                                             =======
+    //                                                                         Information
+    //                                                                         ===========
     protected void info(String msg) {
+        if (logger != null) {
+            logger.info(msg);
+        } else {
+            if (loggingFile == null) { // no logger settings
+                println(msg); // as default
+            }
+            // no output before logger ready
+        }
+    }
+
+    protected void println(String msg) {
         System.out.println(msg); // console as default not to depends specific logger
     }
 
