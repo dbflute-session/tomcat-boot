@@ -21,6 +21,12 @@ import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.nio.file.FileVisitResult;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Properties;
@@ -232,31 +238,7 @@ public class TomcatBoot {
 
     protected void adjustServer() {
         if (isUnpackWARsDisabled()) {
-            disableUnpackWARs();
-        } else { // as default
-            prepareUnpackWARsEnv();
-        }
-    }
-
-    protected boolean isUnpackWARsDisabled() {
-        return false;
-    }
-
-    protected void disableUnpackWARs() {
-        final Host host = server.getHost();
-        if (host instanceof StandardHost) {
-            ((StandardHost) host).setUnpackWARs(false);
-        }
-    }
-
-    protected void prepareUnpackWARsEnv() {
-        // to avoid IOException failure of making directory
-        final Host host = server.getHost();
-        final File appBaseFile = host.getAppBaseFile(); // e.g. .../tomcat.8080/webapps
-        if (!appBaseFile.exists()) {
-            // embedded Tomcat cannot make the directory, so make here
-            // see ExpandWar.java for the detail: if(!docBase.mkdir() && !docBase.isDirectory())
-            appBaseFile.mkdirs();
+            disableUnpackWARsOption();
         }
     }
 
@@ -265,6 +247,9 @@ public class TomcatBoot {
             final String warPath = prepareWarPath();
             if (warPath.endsWith(".war")) {
                 server.addWebapp(contextPath, warPath);
+                if (!isUnpackWARsDisabled()) {
+                    prepareUnpackWARsEnv();
+                }
             } else {
                 final String docBase = new File(prepareWebappPath()).getAbsolutePath();
                 final Context context = server.addWebapp(contextPath, docBase);
@@ -338,6 +323,73 @@ public class TomcatBoot {
 
     protected String prepareWebXmlPath() {
         return "./src/main/webapp/WEB-INF/web.xml";
+    }
+
+    // ===================================================================================
+    //                                                                          UnpackWARs
+    //                                                                          ==========
+    protected boolean isUnpackWARsDisabled() {
+        return false;
+    }
+
+    protected void disableUnpackWARsOption() {
+        final Host host = server.getHost();
+        if (host instanceof StandardHost) {
+            info("...Disabling unpackWARs");
+            ((StandardHost) host).setUnpackWARs(false);
+        }
+    }
+
+    protected void prepareUnpackWARsEnv() { // to avoid IOException failure of making directory
+        final Host host = server.getHost();
+        final File appBaseFile = host.getAppBaseFile(); // e.g. .../tomcat.8080/webapps
+        if (appBaseFile.exists()) {
+            cleanPreviousExtractedWarDir(appBaseFile);
+        }
+        // embedded Tomcat cannot make the directory, so make here
+        // see ExpandWar.java for the detail: if(!docBase.mkdir() && !docBase.isDirectory())
+        info("...Making unpackWARs directory: " + appBaseFile);
+        appBaseFile.mkdirs();
+    }
+
+    protected void cleanPreviousExtractedWarDir(File appBaseFile) {
+        final String appsPath = appBaseFile.getAbsolutePath().replace("\\", "/");
+        if (!appsPath.contains("/webapps")) { // just in case
+            return;
+        }
+        final String parentPath = appsPath.substring(0, appsPath.lastIndexOf("/webapps")); // e.g. .../tomcat.8080
+        if (!parentPath.contains("/")) { // just in case
+            return;
+        }
+        final String parentName = parentPath.substring(parentPath.lastIndexOf("/") + "/".length());
+        if (!parentName.startsWith("tomcat.")) { // just in case
+            return;
+        }
+        // here e.g. tomcat.8080
+        try {
+            // clean work and extracted resources
+            info("...Cleaning previous extracted-war directory: " + parentPath);
+            Files.walkFileTree(Paths.get(parentPath), new SimpleFileVisitor<Path>() {
+                @Override
+                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                    Files.delete(file);
+                    return FileVisitResult.CONTINUE;
+                }
+
+                @Override
+                public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
+                    if (exc == null) {
+                        Files.delete(dir);
+                        return FileVisitResult.CONTINUE;
+                    } else {
+                        throw exc;
+                    }
+                }
+            });
+        } catch (IOException continued) {
+            info("*Failed to delete previous directory: " + continued.getMessage());
+            return;
+        }
     }
 
     // ===================================================================================
