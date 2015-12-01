@@ -231,14 +231,32 @@ public class TomcatBoot {
     }
 
     protected void adjustServer() {
-        disableUnpackWARs();
+        if (isUnpackWARsDisabled()) {
+            disableUnpackWARs();
+        } else { // as default
+            prepareUnpackWARsEnv();
+        }
+    }
+
+    protected boolean isUnpackWARsDisabled() {
+        return false;
     }
 
     protected void disableUnpackWARs() {
         final Host host = server.getHost();
         if (host instanceof StandardHost) {
-            // suppress ExpandWar's IOException, originally embedded so unneeded
             ((StandardHost) host).setUnpackWARs(false);
+        }
+    }
+
+    protected void prepareUnpackWARsEnv() {
+        // to avoid IOException failure of making directory
+        final Host host = server.getHost();
+        final File appBaseFile = host.getAppBaseFile(); // e.g. .../tomcat.8080/webapps
+        if (!appBaseFile.exists()) {
+            // embedded Tomcat cannot make the directory, so make here
+            // see ExpandWar.java for the detail: if(!docBase.mkdir() && !docBase.isDirectory())
+            appBaseFile.mkdirs();
         }
     }
 
