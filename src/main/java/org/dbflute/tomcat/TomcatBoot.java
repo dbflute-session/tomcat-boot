@@ -21,11 +21,19 @@ import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.nio.file.FileVisitResult;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Properties;
 import java.util.function.Consumer;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import javax.servlet.ServletException;
 
@@ -42,6 +50,7 @@ import org.dbflute.tomcat.core.RhythmicalHandlingDef.WebFragmentsHandling;
 import org.dbflute.tomcat.core.RhythmicalTomcat;
 import org.dbflute.tomcat.logging.ServerLoggingLoader;
 import org.dbflute.tomcat.logging.TomcatLoggingOption;
+import org.dbflute.tomcat.util.BotmResourceUtil;
 
 /**
  * @author jflute
@@ -231,14 +240,8 @@ public class TomcatBoot {
     }
 
     protected void adjustServer() {
-        disableUnpackWARs();
-    }
-
-    protected void disableUnpackWARs() {
-        final Host host = server.getHost();
-        if (host instanceof StandardHost) {
-            // suppress ExpandWar's IOException, originally embedded so unneeded
-            ((StandardHost) host).setUnpackWARs(false);
+        if (isUnpackWARsDisabled()) {
+            disableUnpackWARsOption();
         }
     }
 
@@ -247,10 +250,15 @@ public class TomcatBoot {
             final String warPath = prepareWarPath();
             if (warPath.endsWith(".war")) {
                 server.addWebapp(contextPath, warPath);
+                if (!isUnpackWARsDisabled()) {
+                    prepareUnpackWARsEnv();
+                }
             } else {
-                final String docBase = new File(prepareWebappPath()).getAbsolutePath();
+                final String webappPath = prepareWebappPath();
+                final String docBase = new File(webappPath).getAbsolutePath();
                 final Context context = server.addWebapp(contextPath, docBase);
-                context.getServletContext().setAttribute(Globals.ALT_DD_ATTR, prepareWebXmlPath());
+                final String webXmlPath = prepareWebXmlPath(webappPath);
+                context.getServletContext().setAttribute(Globals.ALT_DD_ATTR, webXmlPath);
             }
         } catch (ServletException e) {
             throw new IllegalStateException("Failed to set up web context.", e);
@@ -315,11 +323,154 @@ public class TomcatBoot {
     }
 
     protected String prepareWebappPath() {
+        return deriveWebappDir().getPath();
+    }
+
+    protected String prepareWebXmlPath(String webappPath) {
+        return webappPath + "/WEB-INF/web.xml";
+    }
+
+    protected File deriveWebappDir() {
+        final String webappRelativePath = getBasicWebappRelativePath();
+        final File webappDir = new File(webappRelativePath);
+        if (webappDir.exists()) { // from current directory
+            return webappDir;
+        }
+        final File projectWebappDir = findProjectWebappDir(webappRelativePath); // from build path
+        if (projectWebappDir != null) {
+            return projectWebappDir;
+        }
+        throw new IllegalStateException("Not found the webapp directory: " + webappDir);
+    }
+
+    protected String getBasicWebappRelativePath() {
         return "./src/main/webapp";
     }
 
-    protected String prepareWebXmlPath() {
-        return "./src/main/webapp/WEB-INF/web.xml";
+    protected File findProjectWebappDir(String webappRelativePath) {
+        info("...Finding project webapp from stack trace: webappRelativePath=" + webappRelativePath);
+        final StackTraceElement[] stackTrace = new RuntimeException().getStackTrace();
+        if (stackTrace == null || stackTrace.length == 0) { // just in case
+            info("*Not found the stack trace: " + stackTrace);
+            return null;
+        }
+        // IntelliJ calls from own main() so find nearest main()
+        StackTraceElement rootElement = null;
+        for (int i = 0; i < stackTrace.length; i++) {
+            final StackTraceElement element = stackTrace[i];
+            if ("main".equals(element.getMethodName())) {
+                rootElement = element;
+                break;
+            }
+        }
+        if (rootElement == null) { // just in case
+            info("*Not found the main method: " + Stream.of(stackTrace).map(el -> {
+                return el.getMethodName();
+            }).collect(Collectors.joining(",")));
+            return null;
+        }
+        final String className = rootElement.getClassName(); // e.g. DocksideBoot
+        final Class<?> clazz;
+        try {
+            clazz = Class.forName(className);
+        } catch (ClassNotFoundException continued) {
+            info("*Not found the class: " + className + " :: " + continued.getMessage());
+            return null;
+        }
+        final File buildDir = BotmResourceUtil.getBuildDir(clazz); // target/classes
+        final File targetDir = buildDir.getParentFile(); // target
+        if (targetDir == null) { // just in case
+            info("*Not found the target directory: buildDir=" + buildDir);
+            return null;
+        }
+        final File projectDir = targetDir.getParentFile(); // e.g. maihama-dockside
+        if (projectDir == null) { // just in case
+            info("*Not found the project directory: targetDir=" + targetDir);
+            return null;
+        }
+        final String projectPath;
+        try {
+            projectPath = projectDir.getCanonicalPath().replace("\\", "/");
+        } catch (IOException continued) {
+            info("*Cannot get canonical path from: " + projectDir + " :: " + continued.getMessage());
+            return null;
+        }
+        final String projectWebappPath = projectPath + "/" + webappRelativePath;
+        final File projectWebappDir = new File(projectWebappPath);
+        if (projectWebappDir.exists()) {
+            info("OK, found the project webapp: " + projectWebappPath);
+            return projectWebappDir;
+        } else {
+            info("*Not found the project webapp by derived path: " + projectWebappPath);
+            return null;
+        }
+    }
+
+    // ===================================================================================
+    //                                                                          UnpackWARs
+    //                                                                          ==========
+    protected boolean isUnpackWARsDisabled() {
+        return false;
+    }
+
+    protected void disableUnpackWARsOption() {
+        final Host host = server.getHost();
+        if (host instanceof StandardHost) {
+            info("...Disabling unpackWARs");
+            ((StandardHost) host).setUnpackWARs(false);
+        }
+    }
+
+    protected void prepareUnpackWARsEnv() { // to avoid IOException failure of making directory
+        final Host host = server.getHost();
+        final File appBaseFile = host.getAppBaseFile(); // e.g. .../tomcat.8080/webapps
+        if (appBaseFile.exists()) {
+            cleanPreviousExtractedWarDir(appBaseFile);
+        }
+        // embedded Tomcat cannot make the directory, so make here
+        // see ExpandWar.java for the detail: if(!docBase.mkdir() && !docBase.isDirectory())
+        info("...Making unpackWARs directory: " + appBaseFile);
+        appBaseFile.mkdirs();
+    }
+
+    protected void cleanPreviousExtractedWarDir(File appBaseFile) {
+        final String appsPath = appBaseFile.getAbsolutePath().replace("\\", "/");
+        if (!appsPath.contains("/webapps")) { // just in case
+            return;
+        }
+        final String parentPath = appsPath.substring(0, appsPath.lastIndexOf("/webapps")); // e.g. .../tomcat.8080
+        if (!parentPath.contains("/")) { // just in case
+            return;
+        }
+        final String parentName = parentPath.substring(parentPath.lastIndexOf("/") + "/".length());
+        if (!parentName.startsWith("tomcat.")) { // just in case
+            return;
+        }
+        // here e.g. tomcat.8080
+        try {
+            // clean work and extracted resources
+            info("...Cleaning previous extracted-war directory: " + parentPath);
+            Files.walkFileTree(Paths.get(parentPath), new SimpleFileVisitor<Path>() {
+                @Override
+                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                    Files.delete(file);
+                    return FileVisitResult.CONTINUE;
+                }
+
+                @Override
+                public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
+                    if (exc == null) {
+                        Files.delete(dir);
+                        return FileVisitResult.CONTINUE;
+                    } else {
+                        throw exc;
+                    }
+                }
+            });
+        } catch (IOException continued) {
+            info("*Failed to delete previous directory: " + continued.getMessage());
+            return;
+        }
     }
 
     // ===================================================================================

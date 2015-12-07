@@ -99,7 +99,7 @@ public class RhythmicalTomcat extends Tomcat { // e.g. to remove org.eclipse.jet
     }
 
     protected RhythmicalContextConfig newRhythmicalContextConfig(AnnotationHandling annotationHandling,
-            MetaInfoResourceHandling metaInfoResourceHandling, TldHandling tldHandling, WebFragmentsHandling webFragmentsHandling2) {
+            MetaInfoResourceHandling metaInfoResourceHandling, TldHandling tldHandling, WebFragmentsHandling webFragmentsHandling) {
         return new RhythmicalContextConfig(annotationHandling, metaInfoResourceHandling, tldHandling, webFragmentsHandling);
     }
 }
