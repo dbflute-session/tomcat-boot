@@ -84,6 +84,7 @@ public class TomcatBoot {
     protected String configFile;
     protected String loggingFile;
     protected Consumer<TomcatLoggingOption> loggingOptionCall;
+    protected String baseDir;
 
     // -----------------------------------------------------
     //                                              Stateful
@@ -169,6 +170,11 @@ public class TomcatBoot {
         return this;
     }
 
+    public TomcatBoot atBaseDir(String baseDir) {
+        this.baseDir = baseDir;
+        return this;
+    }
+
     // ===================================================================================
     //                                                                               Boot
     //                                                                              ======
@@ -234,6 +240,9 @@ public class TomcatBoot {
     protected void prepareServer() {
         server = createTomcat();
         server.setPort(port);
+        if (baseDir != null) {
+            server.setBaseDir(baseDir);
+        }
         adjustServer();
         setupWebappContext();
         setupServerConfigIfNeeds();
