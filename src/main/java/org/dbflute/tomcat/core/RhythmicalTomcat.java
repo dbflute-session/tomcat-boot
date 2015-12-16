@@ -33,11 +33,17 @@ import org.dbflute.tomcat.core.RhythmicalHandlingDef.WebFragmentsHandling;
  */
 public class RhythmicalTomcat extends Tomcat { // e.g. to remove org.eclipse.jetty
 
+    // ===================================================================================
+    //                                                                           Attribute
+    //                                                                           =========
     protected final AnnotationHandling annotationHandling;
     protected final MetaInfoResourceHandling metaInfoResourceHandling;
     protected final TldHandling tldHandling;
     protected final WebFragmentsHandling webFragmentsHandling;
 
+    // ===================================================================================
+    //                                                                         Constructor
+    //                                                                         ===========
     public RhythmicalTomcat(AnnotationHandling annotationHandling, MetaInfoResourceHandling metaInfoResourceHandling,
             TldHandling tldHandling, WebFragmentsHandling webFragmentsHandling) {
         this.annotationHandling = annotationHandling;
@@ -46,23 +52,40 @@ public class RhythmicalTomcat extends Tomcat { // e.g. to remove org.eclipse.jet
         this.webFragmentsHandling = webFragmentsHandling;
     }
 
+    // ===================================================================================
+    //                                                                          Add Webapp
+    //                                                                          ==========
     // copied from super Tomcat because of private methods
     @Override
-    public Context addWebapp(Host host, String contextPath, String name, String docBase) {
-        // quit
+    public Context addWebapp(Host host, String contextPath, String docBase) {
+        final ContextConfig contextConfig = createContextConfig(); // *extension point
+        return addWebapp(host, contextPath, docBase, contextConfig);
+    }
+
+    protected ContextConfig createContextConfig() {
+        return newRhythmicalContextConfig(annotationHandling, metaInfoResourceHandling, tldHandling, webFragmentsHandling);
+    }
+
+    protected RhythmicalContextConfig newRhythmicalContextConfig(AnnotationHandling annotationHandling,
+            MetaInfoResourceHandling metaInfoResourceHandling, TldHandling tldHandling, WebFragmentsHandling webFragmentsHandling) {
+        return new RhythmicalContextConfig(annotationHandling, metaInfoResourceHandling, tldHandling, webFragmentsHandling);
+    }
+
+    @Override
+    public Context addWebapp(Host host, String contextPath, String docBase, ContextConfig config) {
+        // quit because of private and unneeded
         //silence(host, contextPath);
 
         final Context ctx = createContext(host, contextPath);
         ctx.setPath(contextPath);
         ctx.setDocBase(docBase);
-        ctx.addLifecycleListener(newDefaultWebXmlListener());
+        ctx.addLifecycleListener(newDefaultWebXmlListener()); // *extension point
         ctx.setConfigFile(getWebappConfigFile(docBase, contextPath));
 
-        final ContextConfig ctxCfg = createContextConfig(); // *extension point
-        ctx.addLifecycleListener(ctxCfg);
+        ctx.addLifecycleListener(config);
 
         // prevent it from looking ( if it finds one - it'll have dup error )
-        ctxCfg.setDefaultWebXml(noDefaultWebXmlPath());
+        config.setDefaultWebXml(noDefaultWebXmlPath());
 
         if (host == null) {
             getHost().addChild(ctx);
@@ -73,11 +96,7 @@ public class RhythmicalTomcat extends Tomcat { // e.g. to remove org.eclipse.jet
         return ctx;
     }
 
-    protected DefaultWebXmlListener newDefaultWebXmlListener() {
-        return new DefaultWebXmlListener();
-    }
-
-    protected Context createContext(Host host, String url) {
+    protected Context createContext(Host host, String url) { // same as super class's private method
         String contextClass = StandardContext.class.getName();
         if (host == null) {
             host = this.getHost();
@@ -94,12 +113,7 @@ public class RhythmicalTomcat extends Tomcat { // e.g. to remove org.eclipse.jet
         }
     }
 
-    protected ContextConfig createContextConfig() {
-        return newRhythmicalContextConfig(annotationHandling, metaInfoResourceHandling, tldHandling, webFragmentsHandling);
-    }
-
-    protected RhythmicalContextConfig newRhythmicalContextConfig(AnnotationHandling annotationHandling,
-            MetaInfoResourceHandling metaInfoResourceHandling, TldHandling tldHandling, WebFragmentsHandling webFragmentsHandling) {
-        return new RhythmicalContextConfig(annotationHandling, metaInfoResourceHandling, tldHandling, webFragmentsHandling);
+    protected DefaultWebXmlListener newDefaultWebXmlListener() {
+        return new DefaultWebXmlListener();
     }
 }
