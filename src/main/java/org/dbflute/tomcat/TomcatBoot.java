@@ -508,6 +508,11 @@ public class TomcatBoot {
             info(" tomcat.useBodyEncodingForURI = " + useBodyEncodingForURI);
             connector.setUseBodyEncodingForURI(useBodyEncodingForURI.equalsIgnoreCase("true"));
         }
+        final String bindAddress = props.getProperty("tomcat.bindAddress");
+        if (bindAddress != null) {
+            info(" tomcat.bindAddress = " + bindAddress);
+            connector.setProperty("address", bindAddress);
+        }
     }
 
     // -----------------------------------------------------
