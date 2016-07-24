@@ -207,6 +207,10 @@ public class TomcatBoot {
             configProps.load(ins);
         } catch (IOException e) {
             throw new IllegalStateException("Failed to load the config resource as stream: " + resolvedConfigFile, e);
+        } finally {
+            try {
+                ins.close();
+            } catch (IOException ignored) {}
         }
     }
 
