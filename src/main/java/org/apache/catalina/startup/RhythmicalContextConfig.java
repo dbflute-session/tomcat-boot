@@ -13,20 +13,21 @@
  * either express or implied. See the License for the specific language
  * governing permissions and limitations under the License.
  */
-package org.dbflute.tomcat.core;
+package org.apache.catalina.startup;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import org.apache.catalina.startup.ContextConfig;
 import org.apache.tomcat.util.descriptor.web.WebXml;
+import org.apache.tomcat.util.descriptor.web.WebXmlParser;
 import org.dbflute.tomcat.core.RhythmicalHandlingDef.AnnotationHandling;
 import org.dbflute.tomcat.core.RhythmicalHandlingDef.MetaInfoResourceHandling;
 import org.dbflute.tomcat.core.RhythmicalHandlingDef.TldHandling;
 import org.dbflute.tomcat.core.RhythmicalHandlingDef.WebFragmentsHandling;
 
+// use the same package as JavaClassCacheEntry because of package private
 /**
  * @author jflute
  */
@@ -46,9 +47,9 @@ public class RhythmicalContextConfig extends ContextConfig {
     }
 
     @Override
-    protected Map<String, WebXml> processJarsForWebFragments(WebXml application) {
+    protected Map<String, WebXml> processJarsForWebFragments(WebXml application, WebXmlParser webXmlParser) {
         if (WebFragmentsHandling.DETECT.equals(webFragmentsHandling)) {
-            return super.processJarsForWebFragments(application);
+            return super.processJarsForWebFragments(application, webXmlParser);
         }
         return new HashMap<String, WebXml>(2);
     }
@@ -65,7 +66,7 @@ public class RhythmicalContextConfig extends ContextConfig {
     protected boolean isAvailableInitializers() {
         return AnnotationHandling.DETECT.equals(annotationHandling) // e.g. Servlet annotation
                 || TldHandling.DETECT.equals(tldHandling) // .tld in jar files
-                ;
+        ;
     }
 
     protected void removeJettyInitializer() {
@@ -77,9 +78,9 @@ public class RhythmicalContextConfig extends ContextConfig {
     }
 
     @Override
-    protected void processAnnotations(Set<WebXml> fragments, boolean handlesTypesOnly) {
+    protected void processAnnotations(Set<WebXml> fragments, boolean handlesTypesOnly, Map<String, JavaClassCacheEntry> javaClassCache) {
         if (AnnotationHandling.DETECT.equals(annotationHandling)) {
-            super.processAnnotations(fragments, handlesTypesOnly);
+            super.processAnnotations(fragments, handlesTypesOnly, javaClassCache);
         }
     }
 

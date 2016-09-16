@@ -14,7 +14,17 @@ Automatically shutdown before next process boot
 <dependency>
     <groupId>org.dbflute.tomcat</groupId>
     <artifactId>tomcat-boot</artifactId>
-    <version>0.4.3</version>
+    <version>0.5.0</version>
+</dependency>
+```
+
+## if you use JSP
+Add the jasper to your dependencies like this:
+```xml
+<dependency> <!-- for jsp -->
+    <groupId>org.apache.tomcat</groupId>
+    <artifactId>tomcat-jasper</artifactId>
+    <version>8.5.4</version>
 </dependency>
 ```
 
@@ -26,4 +36,7 @@ comming soon...
 
 # Thanks, Friends
 TomcatBoot is used by:  
-comming soon...
+- Fess: https://github.com/codelibs/fess (from version10)
+
+Deeply Thanks!
+

@@ -22,6 +22,7 @@ import org.apache.catalina.Host;
 import org.apache.catalina.core.StandardContext;
 import org.apache.catalina.core.StandardHost;
 import org.apache.catalina.startup.ContextConfig;
+import org.apache.catalina.startup.RhythmicalContextConfig;
 import org.apache.catalina.startup.Tomcat;
 import org.dbflute.tomcat.core.RhythmicalHandlingDef.AnnotationHandling;
 import org.dbflute.tomcat.core.RhythmicalHandlingDef.MetaInfoResourceHandling;
