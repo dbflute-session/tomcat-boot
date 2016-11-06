@@ -15,10 +15,15 @@
  */
 package org.dbflute.tomcat.core;
 
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
+import java.util.Optional;
 
 import org.apache.catalina.Context;
 import org.apache.catalina.Host;
+import org.apache.catalina.Lifecycle;
+import org.apache.catalina.LifecycleEvent;
+import org.apache.catalina.Wrapper;
 import org.apache.catalina.core.StandardContext;
 import org.apache.catalina.core.StandardHost;
 import org.apache.catalina.startup.ContextConfig;
@@ -28,6 +33,7 @@ import org.dbflute.tomcat.core.RhythmicalHandlingDef.AnnotationHandling;
 import org.dbflute.tomcat.core.RhythmicalHandlingDef.MetaInfoResourceHandling;
 import org.dbflute.tomcat.core.RhythmicalHandlingDef.TldHandling;
 import org.dbflute.tomcat.core.RhythmicalHandlingDef.WebFragmentsHandling;
+import org.dbflute.tomcat.logging.BootLogger;
 
 /**
  * @author jflute
@@ -37,6 +43,7 @@ public class RhythmicalTomcat extends Tomcat { // e.g. to remove org.eclipse.jet
     // ===================================================================================
     //                                                                           Attribute
     //                                                                           =========
+    protected final BootLogger bootLogger;
     protected final AnnotationHandling annotationHandling;
     protected final MetaInfoResourceHandling metaInfoResourceHandling;
     protected final TldHandling tldHandling;
@@ -45,8 +52,9 @@ public class RhythmicalTomcat extends Tomcat { // e.g. to remove org.eclipse.jet
     // ===================================================================================
     //                                                                         Constructor
     //                                                                         ===========
-    public RhythmicalTomcat(AnnotationHandling annotationHandling, MetaInfoResourceHandling metaInfoResourceHandling,
+    public RhythmicalTomcat(BootLogger bootLogger, AnnotationHandling annotationHandling, MetaInfoResourceHandling metaInfoResourceHandling,
             TldHandling tldHandling, WebFragmentsHandling webFragmentsHandling) {
+        this.bootLogger = bootLogger;
         this.annotationHandling = annotationHandling;
         this.metaInfoResourceHandling = metaInfoResourceHandling;
         this.tldHandling = tldHandling;
@@ -115,6 +123,93 @@ public class RhythmicalTomcat extends Tomcat { // e.g. to remove org.eclipse.jet
     }
 
     protected DefaultWebXmlListener newDefaultWebXmlListener() {
-        return new DefaultWebXmlListener();
+        return new DefaultWebXmlListener() {
+            @Override
+            public void lifecycleEvent(LifecycleEvent event) {
+                doDefaultWebXmlLifecycleEvent(event);
+            }
+        };
+    }
+
+    protected void doDefaultWebXmlLifecycleEvent(LifecycleEvent event) { // to suppress JSP's exception noise
+        if (Lifecycle.BEFORE_START_EVENT.equals(event.getType())) {
+            final Context ctx = (Context) event.getLifecycle();
+            final String msgBase = "...Initializing webapp of default web.xml ";
+            if (existsJspServlet()) { // e.g. jasper
+                bootLogger.info(msgBase + "with JSP (the servlet found)");
+                initWebappDefaults(ctx); // as normal
+            } else {
+                final Optional<String[]> defaultMimeMappings = extractDefaultMimeMappings();
+                if (!defaultMimeMappings.isPresent()) { // e.g. version difference
+                    bootLogger.info(msgBase + "with JSP (cannot remove it)");
+                    initWebappDefaults(ctx); // as normal
+                } else { // e.g. JSON API style
+                    bootLogger.info(msgBase + "without JSP");
+                    initWebappDefaultsWithoutJsp(ctx, defaultMimeMappings.get());
+                }
+            }
+        }
+    }
+
+    // ===================================================================================
+    //                                                                      Webapp Default
+    //                                                                      ==============
+    protected boolean existsJspServlet() {
+        try {
+            Class.forName("org.apache.jasper.servlet.JspServlet");
+            return true;
+        } catch (ClassNotFoundException ignored) {
+            return false;
+        }
+    }
+
+    protected Optional<String[]> extractDefaultMimeMappings() {
+        final String fieldName = "DEFAULT_MIME_MAPPINGS";
+        final String[] mappings;
+        try {
+            final Field mappingsField = Tomcat.class.getDeclaredField(fieldName);
+            mappingsField.setAccessible(true);
+            mappings = (String[]) mappingsField.get(this);
+        } catch (NoSuchFieldException continued) {
+            bootLogger.info("*Not found the field " + fieldName + " in this Tomcat: " + this);
+            return Optional.empty();
+        } catch (SecurityException | IllegalArgumentException | IllegalAccessException e) {
+            throw new IllegalStateException("Failed to get default mime mappings: " + fieldName, e);
+        }
+        return Optional.ofNullable(mappings);
+    }
+
+    protected void initWebappDefaultsWithoutJsp(Context ctx, String[] defaultMimeMappings) {
+        // Default servlet
+        final Wrapper servlet = addServlet(ctx, "default", "org.apache.catalina.servlets.DefaultServlet");
+        servlet.setLoadOnStartup(1);
+        servlet.setOverridable(true);
+
+        // without JSP
+        //// JSP servlet (by class name - to avoid loading all deps)
+        //servlet = addServlet(ctx, "jsp", "org.apache.jasper.servlet.JspServlet");
+        //servlet.addInitParameter("fork", "false");
+        //servlet.setLoadOnStartup(3);
+        //servlet.setOverridable(true);
+
+        // Servlet mappings
+        ctx.addServletMapping("/", "default");
+        // without JSP
+        //ctx.addServletMapping("*.jsp", "jsp");
+        //ctx.addServletMapping("*.jspx", "jsp");
+
+        // Sessions
+        ctx.setSessionTimeout(30);
+
+        // MIME mappings
+        for (int i = 0; i < defaultMimeMappings.length;) {
+            ctx.addMimeMapping(defaultMimeMappings[i++], defaultMimeMappings[i++]);
+        }
+
+        // Welcome files
+        ctx.addWelcomeFile("index.html");
+        ctx.addWelcomeFile("index.htm");
+        // without JSP
+        //ctx.addWelcomeFile("index.jsp");
     }
 }
