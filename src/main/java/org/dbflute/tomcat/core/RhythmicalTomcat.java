@@ -193,10 +193,10 @@ public class RhythmicalTomcat extends Tomcat { // e.g. to remove org.eclipse.jet
         //servlet.setOverridable(true);
 
         // Servlet mappings
-        ctx.addServletMapping("/", "default");
+        ctx.addServletMappingDecoded("/", "default");
         // without JSP
-        //ctx.addServletMapping("*.jsp", "jsp");
-        //ctx.addServletMapping("*.jspx", "jsp");
+        //ctx.addServletMappingDecoded("*.jsp", "jsp");
+        //ctx.addServletMappingDecoded("*.jspx", "jsp");
 
         // Sessions
         ctx.setSessionTimeout(30);
