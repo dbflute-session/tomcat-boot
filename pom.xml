@@ -16,7 +16,7 @@
 		<servlet.version>3.1.0</servlet.version>
 		<jsp.version>2.3.1</jsp.version>
 		<tomcat.version>8.5.6</tomcat.version>
-		<utflute.version>0.6.0F</utflute.version>
+		<utflute.version>0.6.1C</utflute.version>
 	</properties>
 
 	<licenses>
