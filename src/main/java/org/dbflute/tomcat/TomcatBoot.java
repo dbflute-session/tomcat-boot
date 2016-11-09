@@ -48,7 +48,7 @@ import org.dbflute.tomcat.core.RhythmicalHandlingDef.MetaInfoResourceHandling;
 import org.dbflute.tomcat.core.RhythmicalHandlingDef.TldHandling;
 import org.dbflute.tomcat.core.RhythmicalHandlingDef.WebFragmentsHandling;
 import org.dbflute.tomcat.core.RhythmicalTomcat;
-import org.dbflute.tomcat.logging.ServerLoggingLoader;
+import org.dbflute.tomcat.logging.BootLogger;
 import org.dbflute.tomcat.logging.TomcatLoggingOption;
 import org.dbflute.tomcat.util.BotmResourceUtil;
 
@@ -91,6 +91,7 @@ public class TomcatBoot {
     //                                              --------
     protected String resolvedConfigFile;
     protected Properties configProps;
+    protected BootLogger bootLogger;
     protected Logger logger;
     protected Tomcat server;
 
@@ -215,14 +216,7 @@ public class TomcatBoot {
     }
 
     protected void loadServerLoggingIfNeeds() { // should be called after configuration
-        if (loggingFile != null) {
-            createServerLoggingLoader().loadServerLogging();
-            logger = Logger.getLogger(getClass().getPackage().getName());
-        }
-    }
-
-    protected ServerLoggingLoader createServerLoggingLoader() {
-        return new ServerLoggingLoader(loggingFile, loggingOptionCall, configProps, msg -> println(msg));
+        bootLogger = new BootLogger(loggingFile, loggingOptionCall, configProps);
     }
 
     // -----------------------------------------------------
@@ -283,12 +277,12 @@ public class TomcatBoot {
         final MetaInfoResourceHandling metaInfoResourceHandling = prepareMetaInfoResourceHandling();
         final TldHandling tldHandling = prepareTldHandling();
         final WebFragmentsHandling webFragmentsHandling = prepareuseWebFragmentsHandling();
-        return newRhythmicalTomcat(annotationHandling, metaInfoResourceHandling, tldHandling, webFragmentsHandling);
+        return newRhythmicalTomcat(bootLogger, annotationHandling, metaInfoResourceHandling, tldHandling, webFragmentsHandling);
     }
 
-    protected RhythmicalTomcat newRhythmicalTomcat(AnnotationHandling annotationHandling, MetaInfoResourceHandling metaInfoResourceHandling,
-            TldHandling tldHandling, WebFragmentsHandling webFragmentsHandling) {
-        return new RhythmicalTomcat(annotationHandling, metaInfoResourceHandling, tldHandling, webFragmentsHandling);
+    protected RhythmicalTomcat newRhythmicalTomcat(BootLogger bootLogger, AnnotationHandling annotationHandling,
+            MetaInfoResourceHandling metaInfoResourceHandling, TldHandling tldHandling, WebFragmentsHandling webFragmentsHandling) {
+        return new RhythmicalTomcat(bootLogger, annotationHandling, metaInfoResourceHandling, tldHandling, webFragmentsHandling);
     }
 
     protected AnnotationHandling prepareAnnotationHandling() {
@@ -667,18 +661,7 @@ public class TomcatBoot {
     //                                                                         Information
     //                                                                         ===========
     protected void info(String msg) {
-        if (logger != null) {
-            logger.info(msg);
-        } else {
-            if (loggingFile == null) { // no logger settings
-                println(msg); // as default
-            }
-            // no output before logger ready
-        }
-    }
-
-    protected void println(String msg) {
-        System.out.println(msg); // console as default not to depends specific logger
+        bootLogger.info(msg);
     }
 
     // ===================================================================================
