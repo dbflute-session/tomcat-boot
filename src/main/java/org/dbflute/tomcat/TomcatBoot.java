@@ -114,7 +114,8 @@ public class TomcatBoot {
     }
 
     public TomcatBoot browseOnDesktop() {
-        assertDevelopmentState();
+        // wants to use this in production (e.g. DBFlute Intro) 
+        //assertDevelopmentState();
         browseOnDesktop = true;
         return this;
     }
