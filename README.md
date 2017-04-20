@@ -14,7 +14,7 @@ Automatically shutdown before next process boot
 <dependency>
     <groupId>org.dbflute.tomcat</groupId>
     <artifactId>tomcat-boot</artifactId>
-    <version>0.5.3</version>
+    <version>0.5.4</version>
 </dependency>
 ```
 
