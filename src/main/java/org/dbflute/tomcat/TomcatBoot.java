@@ -31,6 +31,7 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Properties;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -81,6 +82,7 @@ public class TomcatBoot {
     protected boolean useMetaInfoResourceDetect;
     protected boolean useTldDetect;
     protected boolean useWebFragmentsDetect;
+    protected Predicate<String> webFragmentsSelector; // null allowed
     protected String configFile;
     protected String loggingFile;
     protected Consumer<TomcatLoggingOption> loggingOptionCall;
@@ -132,23 +134,56 @@ public class TomcatBoot {
         }
     }
 
+    /**
+     * You can detect annotations in all jar files.
+     * @return this. (NotNull)
+     */
     public TomcatBoot useAnnotationDetect() {
         useAnnotationDetect = true;
         return this;
     }
 
-    public TomcatBoot useMetaInfoResourceDetect() {
+    /**
+     * You can detect 'META-INF' resources in jar files detected as web fragments. <br>
+     * So you also needs to enable web fragments detect.
+     * @return this. (NotNull)
+     */
+    public TomcatBoot useMetaInfoResourceDetect() { // also needs web fragments detect
         useMetaInfoResourceDetect = true;
         return this;
     }
 
+    /**
+     * You can detect '.tdl' files in all jar files.
+     * @return this. (NotNull)
+     */
     public TomcatBoot useTldDetect() {
         useTldDetect = true;
         return this;
     }
 
-    public TomcatBoot useWebFragmentsDetect() {
+    /**
+     * You can detect web fragments in all jar files.
+     * @return this. (NotNull)
+     */
+    public TomcatBoot useWebFragmentsDetect() { // without filter (so all jar files are scanned)
         useWebFragmentsDetect = true;
+        return this;
+    }
+
+    /**
+     * You can detect web fragments in selected jar files.
+     * <pre>
+     * boot.useMetaInfoResourceDetect().useWebFragmentsDetect(jarName -&gt; { // for swagger
+     *     return jarName.contains("swagger");
+     * });
+     * </pre>
+     * @param oneArgLambda The callback for selector of web fragments, argument is jar name. (NotNull)
+     * @return this. (NotNull)
+     */
+    public TomcatBoot useWebFragmentsDetect(Predicate<String> oneArgLambda) { // you can select
+        useWebFragmentsDetect = true;
+        webFragmentsSelector = oneArgLambda;
         return this;
     }
 
@@ -278,12 +313,16 @@ public class TomcatBoot {
         final MetaInfoResourceHandling metaInfoResourceHandling = prepareMetaInfoResourceHandling();
         final TldHandling tldHandling = prepareTldHandling();
         final WebFragmentsHandling webFragmentsHandling = prepareuseWebFragmentsHandling();
-        return newRhythmicalTomcat(bootLogger, annotationHandling, metaInfoResourceHandling, tldHandling, webFragmentsHandling);
+        final Predicate<String> webFragmentsSelector = prepareWebFragmentsSelector();
+        return newRhythmicalTomcat(bootLogger, annotationHandling, metaInfoResourceHandling, tldHandling // 
+                , webFragmentsHandling, webFragmentsSelector);
     }
 
     protected RhythmicalTomcat newRhythmicalTomcat(BootLogger bootLogger, AnnotationHandling annotationHandling,
-            MetaInfoResourceHandling metaInfoResourceHandling, TldHandling tldHandling, WebFragmentsHandling webFragmentsHandling) {
-        return new RhythmicalTomcat(bootLogger, annotationHandling, metaInfoResourceHandling, tldHandling, webFragmentsHandling);
+            MetaInfoResourceHandling metaInfoResourceHandling, TldHandling tldHandling, WebFragmentsHandling webFragmentsHandling,
+            Predicate<String> webFragmentsSelector) {
+        return new RhythmicalTomcat(bootLogger, annotationHandling, metaInfoResourceHandling, tldHandling //
+                , webFragmentsHandling, webFragmentsSelector);
     }
 
     protected AnnotationHandling prepareAnnotationHandling() {
@@ -300,6 +339,10 @@ public class TomcatBoot {
 
     protected WebFragmentsHandling prepareuseWebFragmentsHandling() {
         return useWebFragmentsDetect ? WebFragmentsHandling.DETECT : WebFragmentsHandling.NONE;
+    }
+
+    protected Predicate<String> prepareWebFragmentsSelector() {
+        return webFragmentsSelector; // null allowed
     }
 
     // -----------------------------------------------------

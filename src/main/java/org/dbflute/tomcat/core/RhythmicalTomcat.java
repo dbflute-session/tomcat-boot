@@ -18,6 +18,7 @@ package org.dbflute.tomcat.core;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Optional;
+import java.util.function.Predicate;
 
 import org.apache.catalina.Context;
 import org.apache.catalina.Host;
@@ -48,17 +49,19 @@ public class RhythmicalTomcat extends Tomcat { // e.g. to remove org.eclipse.jet
     protected final MetaInfoResourceHandling metaInfoResourceHandling;
     protected final TldHandling tldHandling;
     protected final WebFragmentsHandling webFragmentsHandling;
+    protected final Predicate<String> webFragmentsSelector; // null allowed
 
     // ===================================================================================
     //                                                                         Constructor
     //                                                                         ===========
     public RhythmicalTomcat(BootLogger bootLogger, AnnotationHandling annotationHandling, MetaInfoResourceHandling metaInfoResourceHandling,
-            TldHandling tldHandling, WebFragmentsHandling webFragmentsHandling) {
+            TldHandling tldHandling, WebFragmentsHandling webFragmentsHandling, Predicate<String> webFragmentsSelector) {
         this.bootLogger = bootLogger;
         this.annotationHandling = annotationHandling;
         this.metaInfoResourceHandling = metaInfoResourceHandling;
         this.tldHandling = tldHandling;
         this.webFragmentsHandling = webFragmentsHandling;
+        this.webFragmentsSelector = webFragmentsSelector;
     }
 
     // ===================================================================================
@@ -72,12 +75,15 @@ public class RhythmicalTomcat extends Tomcat { // e.g. to remove org.eclipse.jet
     }
 
     protected ContextConfig createContextConfig() {
-        return newRhythmicalContextConfig(annotationHandling, metaInfoResourceHandling, tldHandling, webFragmentsHandling);
+        return newRhythmicalContextConfig(annotationHandling, metaInfoResourceHandling, tldHandling //
+                , webFragmentsHandling, webFragmentsSelector);
     }
 
     protected RhythmicalContextConfig newRhythmicalContextConfig(AnnotationHandling annotationHandling,
-            MetaInfoResourceHandling metaInfoResourceHandling, TldHandling tldHandling, WebFragmentsHandling webFragmentsHandling) {
-        return new RhythmicalContextConfig(annotationHandling, metaInfoResourceHandling, tldHandling, webFragmentsHandling);
+            MetaInfoResourceHandling metaInfoResourceHandling, TldHandling tldHandling, WebFragmentsHandling webFragmentsHandling,
+            Predicate<String> webFragmentsSelector) {
+        return new RhythmicalContextConfig(annotationHandling, metaInfoResourceHandling, tldHandling //
+                , webFragmentsHandling, webFragmentsSelector);
     }
 
     @Override
