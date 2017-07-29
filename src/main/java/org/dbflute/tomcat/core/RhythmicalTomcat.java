@@ -30,10 +30,12 @@ import org.apache.catalina.core.StandardHost;
 import org.apache.catalina.startup.ContextConfig;
 import org.apache.catalina.startup.RhythmicalContextConfig;
 import org.apache.catalina.startup.Tomcat;
+import org.apache.catalina.valves.AccessLogValve;
 import org.dbflute.tomcat.core.RhythmicalHandlingDef.AnnotationHandling;
 import org.dbflute.tomcat.core.RhythmicalHandlingDef.MetaInfoResourceHandling;
 import org.dbflute.tomcat.core.RhythmicalHandlingDef.TldHandling;
 import org.dbflute.tomcat.core.RhythmicalHandlingDef.WebFragmentsHandling;
+import org.dbflute.tomcat.core.accesslog.AccessLogOption;
 import org.dbflute.tomcat.logging.BootLogger;
 
 /**
@@ -50,18 +52,22 @@ public class RhythmicalTomcat extends Tomcat { // e.g. to remove org.eclipse.jet
     protected final TldHandling tldHandling;
     protected final WebFragmentsHandling webFragmentsHandling;
     protected final Predicate<String> webFragmentsSelector; // null allowed
+    protected final AccessLogOption accessLogOption; // null allowed, use access log if exists
 
     // ===================================================================================
     //                                                                         Constructor
     //                                                                         ===========
-    public RhythmicalTomcat(BootLogger bootLogger, AnnotationHandling annotationHandling, MetaInfoResourceHandling metaInfoResourceHandling,
-            TldHandling tldHandling, WebFragmentsHandling webFragmentsHandling, Predicate<String> webFragmentsSelector) {
+    public RhythmicalTomcat(BootLogger bootLogger // logger
+            , AnnotationHandling annotationHandling, MetaInfoResourceHandling metaInfoResourceHandling // handlers
+            , TldHandling tldHandling, WebFragmentsHandling webFragmentsHandling // more handlers
+            , Predicate<String> webFragmentsSelector, AccessLogOption accessLogOption) { // options
         this.bootLogger = bootLogger;
         this.annotationHandling = annotationHandling;
         this.metaInfoResourceHandling = metaInfoResourceHandling;
         this.tldHandling = tldHandling;
         this.webFragmentsHandling = webFragmentsHandling;
         this.webFragmentsSelector = webFragmentsSelector;
+        this.accessLogOption = accessLogOption;
     }
 
     // ===================================================================================
@@ -75,15 +81,15 @@ public class RhythmicalTomcat extends Tomcat { // e.g. to remove org.eclipse.jet
     }
 
     protected ContextConfig createContextConfig() {
-        return newRhythmicalContextConfig(annotationHandling, metaInfoResourceHandling, tldHandling //
-                , webFragmentsHandling, webFragmentsSelector);
+        return newRhythmicalContextConfig(annotationHandling, metaInfoResourceHandling, tldHandling, webFragmentsHandling,
+                webFragmentsSelector);
     }
 
     protected RhythmicalContextConfig newRhythmicalContextConfig(AnnotationHandling annotationHandling,
             MetaInfoResourceHandling metaInfoResourceHandling, TldHandling tldHandling, WebFragmentsHandling webFragmentsHandling,
             Predicate<String> webFragmentsSelector) {
-        return new RhythmicalContextConfig(annotationHandling, metaInfoResourceHandling, tldHandling //
-                , webFragmentsHandling, webFragmentsSelector);
+        return new RhythmicalContextConfig(annotationHandling, metaInfoResourceHandling, tldHandling, webFragmentsHandling,
+                webFragmentsSelector);
     }
 
     @Override
@@ -111,7 +117,10 @@ public class RhythmicalTomcat extends Tomcat { // e.g. to remove org.eclipse.jet
         return ctx;
     }
 
-    protected Context createContext(Host host, String url) { // same as super class's private method
+    // -----------------------------------------------------
+    //                                               Context
+    //                                               -------
+    protected Context createContext(Host host, String url) { // similar to super class's private method
         String contextClass = StandardContext.class.getName();
         if (host == null) {
             host = this.getHost();
@@ -119,15 +128,45 @@ public class RhythmicalTomcat extends Tomcat { // e.g. to remove org.eclipse.jet
         if (host instanceof StandardHost) {
             contextClass = ((StandardHost) host).getContextClass();
         }
+        final Context ctx;
         try {
-            return (Context) Class.forName(contextClass).getConstructor().newInstance();
+            ctx = (Context) Class.forName(contextClass).getConstructor().newInstance();
         } catch (InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException
                 | NoSuchMethodException | SecurityException | ClassNotFoundException e) {
             String msg = "Can't instantiate context-class " + contextClass + " for host " + host + " and url " + url;
             throw new IllegalArgumentException(msg, e);
         }
+        setupAccessLogIfNeeds(ctx);
+        return ctx;
     }
 
+    protected void setupAccessLogIfNeeds(Context ctx) {
+        if (accessLogOption != null && ctx instanceof StandardContext) { // also check context type just in case
+            final StandardContext stdctx = (StandardContext) ctx;
+            final AccessLogValve valve = new AccessLogValve();
+            final String logDir = accessLogOption.getLogDir();
+            if (logDir != null) {
+                valve.setDirectory(logDir);
+            }
+            final String formatPattern = accessLogOption.getFormatPattern();
+            if (formatPattern != null) {
+                valve.setPattern(formatPattern);
+            } else {
+                valve.setPattern("common"); // as default
+            }
+            final String fileEncoding = accessLogOption.getFileEncoding();
+            if (fileEncoding != null) {
+                valve.setEncoding(fileEncoding);
+            } else {
+                valve.setEncoding("UTF-8"); // as default
+            }
+            stdctx.addValve(valve);
+        }
+    }
+
+    // -----------------------------------------------------
+    //                                       WebXml Listener
+    //                                       ---------------
     protected DefaultWebXmlListener newDefaultWebXmlListener() {
         return new DefaultWebXmlListener() {
             @Override
