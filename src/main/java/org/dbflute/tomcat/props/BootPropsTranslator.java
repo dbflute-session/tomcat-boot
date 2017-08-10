@@ -16,6 +16,7 @@
 package org.dbflute.tomcat.props;
 
 import java.util.Properties;
+import java.util.function.Consumer;
 
 import org.apache.catalina.connector.Connector;
 import org.apache.catalina.startup.Tomcat;
@@ -28,6 +29,9 @@ import org.dbflute.tomcat.logging.BootLogger;
  */
 public class BootPropsTranslator {
 
+    // ===================================================================================
+    //                                                      Configuration Environment Path
+    //                                                      ==============================
     public String resolveConfigEnvPath(String envPath) { // almost same as Lasta Di's logic
         if (envPath == null) {
             throw new IllegalArgumentException("The argument 'envPath' should not be null.");
@@ -49,6 +53,9 @@ public class BootPropsTranslator {
         return System.getProperty("lasta.env"); // uses Lasta Di's as default
     }
 
+    // ===================================================================================
+    //                                                                   Access Log Option
+    //                                                                   =================
     public AccessLogOption prepareAccessLogOption(BootLogger logger, Properties props, String resolvedConfigFile) { // null allowed
         if (props == null) {
             return null;
@@ -59,24 +66,26 @@ public class BootPropsTranslator {
         }
         logger.info("...Preparing tomcat access log: enabled=" + enabled + ", config=" + resolvedConfigFile);
         final AccessLogOption option = new AccessLogOption();
-        final String logDir = props.getProperty("tomcat.accesslog.logDir");
-        if (logDir != null) {
-            logger.info(" tomcat.accesslog.logDir = " + logDir);
-            option.logDir(logDir);
-        }
-        final String formatPattern = props.getProperty("tomcat.accesslog.formatPattern");
-        if (formatPattern != null) {
-            logger.info(" tomcat.accesslog.formatPattern = " + formatPattern);
-            option.formatPattern(formatPattern);
-        }
-        final String fileEncoding = props.getProperty("tomcat.accesslog.fileEncoding");
-        if (fileEncoding != null) {
-            logger.info(" tomcat.accesslog.fileEncoding = " + fileEncoding);
-            option.fileEncoding(fileEncoding);
-        }
+        doPrepareAccessLogOption(logger, props, "logDir", value -> option.logDir(value));
+        doPrepareAccessLogOption(logger, props, "filePrefix", value -> option.filePrefix(value));
+        doPrepareAccessLogOption(logger, props, "fileSuffix", value -> option.fileSuffix(value));
+        doPrepareAccessLogOption(logger, props, "fileDateFormat", value -> option.fileDateFormat(value));
+        doPrepareAccessLogOption(logger, props, "fileEncoding", value -> option.fileEncoding(value));
+        doPrepareAccessLogOption(logger, props, "formatPattern", value -> option.formatPattern(value));
         return option;
     }
 
+    protected void doPrepareAccessLogOption(BootLogger logger, Properties props, String keyword, Consumer<String> reflector) {
+        final String value = props.getProperty("tomcat.accesslog." + keyword);
+        if (value != null) {
+            logger.info(" tomcat.accesslog." + keyword + " = " + value);
+            reflector.accept(value);
+        }
+    }
+
+    // ===================================================================================
+    //                                                                Server Configuration
+    //                                                                ====================
     public void setupServerConfigIfNeeds(BootLogger logger, Tomcat server, Connector connector, Properties props,
             String resolvedConfigFile) {
         if (props == null) {

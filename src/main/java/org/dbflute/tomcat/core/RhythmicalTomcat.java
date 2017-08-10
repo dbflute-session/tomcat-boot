@@ -144,22 +144,12 @@ public class RhythmicalTomcat extends Tomcat { // e.g. to remove org.eclipse.jet
         if (accessLogOption != null && ctx instanceof StandardContext) { // also check context type just in case
             final StandardContext stdctx = (StandardContext) ctx;
             final AccessLogValve valve = new AccessLogValve();
-            final String logDir = accessLogOption.getLogDir();
-            if (logDir != null) {
-                valve.setDirectory(logDir);
-            }
-            final String formatPattern = accessLogOption.getFormatPattern();
-            if (formatPattern != null) {
-                valve.setPattern(formatPattern);
-            } else {
-                valve.setPattern("common"); // as default
-            }
-            final String fileEncoding = accessLogOption.getFileEncoding();
-            if (fileEncoding != null) {
-                valve.setEncoding(fileEncoding);
-            } else {
-                valve.setEncoding("UTF-8"); // as default
-            }
+            accessLogOption.getLogDir().ifPresent(dir -> valve.setDirectory(dir));
+            accessLogOption.getFilePrefix().ifPresent(prefix -> valve.setPrefix(prefix));
+            accessLogOption.getFileSuffix().ifPresent(suffix -> valve.setSuffix(suffix));
+            accessLogOption.getFileDateFormat().ifPresent(format -> valve.setFileDateFormat(format));
+            valve.setEncoding(accessLogOption.getFileEncoding().orElse("UTF-8"));
+            valve.setPattern(accessLogOption.getFormatPattern().orElse("common"));
             stdctx.addValve(valve);
         }
     }

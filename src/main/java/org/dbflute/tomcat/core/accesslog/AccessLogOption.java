@@ -15,24 +15,45 @@
  */
 package org.dbflute.tomcat.core.accesslog;
 
+import java.util.Optional;
+
 /**
  * @author jflute
  * @since 0.5.6 (2017/07/29 Saturday at higashi ginza)
  */
 public class AccessLogOption {
 
+    // ===================================================================================
+    //                                                                           Attribute
+    //                                                                           =========
     //  basically default value exists in tomcat
     protected String logDir; // null allowed
-    protected String formatPattern; // null allowed
+    protected String filePrefix; // null allowed
+    protected String fileSuffix; // null allowed
+    protected String fileDateFormat; // null allowed
     protected String fileEncoding; // null allowed
+    protected String formatPattern; // null allowed
 
+    // ===================================================================================
+    //                                                                         Easy-to-Use
+    //                                                                         ===========
     public AccessLogOption logDir(String logDir) {
         this.logDir = logDir;
         return this;
     }
 
-    public AccessLogOption formatPattern(String formatPattern) {
-        this.formatPattern = formatPattern;
+    public AccessLogOption filePrefix(String filePrefix) {
+        this.filePrefix = filePrefix;
+        return this;
+    }
+
+    public AccessLogOption fileSuffix(String fileSuffix) {
+        this.fileSuffix = fileSuffix;
+        return this;
+    }
+
+    public AccessLogOption fileDateFormat(String fileDateFormat) {
+        this.fileDateFormat = fileDateFormat;
         return this;
     }
 
@@ -41,15 +62,35 @@ public class AccessLogOption {
         return this;
     }
 
-    public String getLogDir() {
-        return logDir;
+    public AccessLogOption formatPattern(String formatPattern) {
+        this.formatPattern = formatPattern;
+        return this;
     }
 
-    public String getFormatPattern() {
-        return formatPattern;
+    // ===================================================================================
+    //                                                                            Accessor
+    //                                                                            ========
+    public Optional<String> getLogDir() {
+        return Optional.ofNullable(logDir);
     }
 
-    public String getFileEncoding() {
-        return fileEncoding;
+    public Optional<String> getFilePrefix() {
+        return Optional.ofNullable(filePrefix);
+    }
+
+    public Optional<String> getFileSuffix() {
+        return Optional.ofNullable(fileSuffix);
+    }
+
+    public Optional<String> getFileDateFormat() {
+        return Optional.ofNullable(fileDateFormat);
+    }
+
+    public Optional<String> getFileEncoding() {
+        return Optional.ofNullable(fileEncoding);
+    }
+
+    public Optional<String> getFormatPattern() {
+        return Optional.ofNullable(formatPattern);
     }
 }
