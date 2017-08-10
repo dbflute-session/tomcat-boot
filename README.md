@@ -24,7 +24,7 @@ Add the jasper to your dependencies like this:
 <dependency> <!-- for jsp -->
     <groupId>org.apache.tomcat</groupId>
     <artifactId>tomcat-jasper</artifactId>
-    <version>8.5.16</version>
+    <version>8.5.20</version>
 </dependency>
 ```
 
