@@ -32,7 +32,6 @@ import java.util.Date;
 import java.util.Properties;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
-import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -41,7 +40,6 @@ import javax.servlet.ServletException;
 import org.apache.catalina.Context;
 import org.apache.catalina.Globals;
 import org.apache.catalina.Host;
-import org.apache.catalina.connector.Connector;
 import org.apache.catalina.core.StandardHost;
 import org.apache.catalina.startup.Tomcat;
 import org.dbflute.tomcat.core.RhythmicalHandlingDef.AnnotationHandling;
@@ -49,8 +47,10 @@ import org.dbflute.tomcat.core.RhythmicalHandlingDef.MetaInfoResourceHandling;
 import org.dbflute.tomcat.core.RhythmicalHandlingDef.TldHandling;
 import org.dbflute.tomcat.core.RhythmicalHandlingDef.WebFragmentsHandling;
 import org.dbflute.tomcat.core.RhythmicalTomcat;
+import org.dbflute.tomcat.core.accesslog.AccessLogOption;
 import org.dbflute.tomcat.logging.BootLogger;
 import org.dbflute.tomcat.logging.TomcatLoggingOption;
+import org.dbflute.tomcat.props.BootPropsTranslator;
 import org.dbflute.tomcat.util.BotmResourceUtil;
 
 /**
@@ -70,7 +70,7 @@ public class TomcatBoot {
     //                                                 Basic
     //                                                 -----
     protected final int port;
-    protected final String contextPath;
+    protected final String contextPath; // not null
 
     // -----------------------------------------------------
     //                                                Option
@@ -83,19 +83,27 @@ public class TomcatBoot {
     protected boolean useTldDetect;
     protected boolean useWebFragmentsDetect;
     protected Predicate<String> webFragmentsSelector; // null allowed
-    protected String configFile;
-    protected String loggingFile;
-    protected Consumer<TomcatLoggingOption> loggingOptionCall;
-    protected String baseDir;
+    protected String configFile; // null allowed
+    protected String loggingFile; // null allowed
+    protected Consumer<TomcatLoggingOption> loggingOptionCall; // null allowed (but not null if loggingFile exists)
+    protected String baseDir; // null allowed
 
     // -----------------------------------------------------
     //                                              Stateful
     //                                              --------
-    protected String resolvedConfigFile;
-    protected Properties configProps;
-    protected BootLogger bootLogger;
-    protected Logger logger;
-    protected Tomcat server;
+    protected String resolvedConfigFile; // null allowed (but not null if configFile exists after ready)
+    protected Properties configProps; // null allowed (but not null if configFile exists after ready)
+    protected BootLogger bootLogger; // not null after ready
+    protected Tomcat server; // not null after preparing server
+
+    // -----------------------------------------------------
+    //                                              Follower
+    //                                              --------
+    protected final BootPropsTranslator propsTranslator = createBootPropsTranslator();
+
+    protected BootPropsTranslator createBootPropsTranslator() {
+        return new BootPropsTranslator();
+    }
 
     // ===================================================================================
     //                                                                         Constructor
@@ -289,8 +297,8 @@ public class TomcatBoot {
     }
 
     protected void setupWebappContext() {
+        final String warPath = prepareWarPath();
         try {
-            final String warPath = prepareWarPath();
             if (warPath.endsWith(".war")) {
                 server.addWebapp(contextPath, warPath);
                 if (!isUnpackWARsDisabled()) {
@@ -304,7 +312,7 @@ public class TomcatBoot {
                 context.getServletContext().setAttribute(Globals.ALT_DD_ATTR, webXmlPath);
             }
         } catch (ServletException e) {
-            throw new IllegalStateException("Failed to set up web context.", e);
+            throw new IllegalStateException("Failed to set up web context: warPath=" + warPath, e);
         }
     }
 
@@ -313,16 +321,17 @@ public class TomcatBoot {
         final MetaInfoResourceHandling metaInfoResourceHandling = prepareMetaInfoResourceHandling();
         final TldHandling tldHandling = prepareTldHandling();
         final WebFragmentsHandling webFragmentsHandling = prepareuseWebFragmentsHandling();
-        final Predicate<String> webFragmentsSelector = prepareWebFragmentsSelector();
+        final Predicate<String> webFragmentsSelector = prepareWebFragmentsSelector(); // null allowed
+        final AccessLogOption accessLogOption = prepareAccessLogOption(); // null allowed
         return newRhythmicalTomcat(bootLogger, annotationHandling, metaInfoResourceHandling, tldHandling // 
-                , webFragmentsHandling, webFragmentsSelector);
+                , webFragmentsHandling, webFragmentsSelector, accessLogOption);
     }
 
     protected RhythmicalTomcat newRhythmicalTomcat(BootLogger bootLogger, AnnotationHandling annotationHandling,
             MetaInfoResourceHandling metaInfoResourceHandling, TldHandling tldHandling, WebFragmentsHandling webFragmentsHandling,
-            Predicate<String> webFragmentsSelector) {
+            Predicate<String> webFragmentsSelector, AccessLogOption accessLogOption) {
         return new RhythmicalTomcat(bootLogger, annotationHandling, metaInfoResourceHandling, tldHandling //
-                , webFragmentsHandling, webFragmentsSelector);
+                , webFragmentsHandling, webFragmentsSelector, accessLogOption);
     }
 
     protected AnnotationHandling prepareAnnotationHandling() {
@@ -343,6 +352,10 @@ public class TomcatBoot {
 
     protected Predicate<String> prepareWebFragmentsSelector() {
         return webFragmentsSelector; // null allowed
+    }
+
+    protected AccessLogOption prepareAccessLogOption() {
+        return propsTranslator.prepareAccessLogOption(bootLogger, configProps, resolvedConfigFile); // null allowed
     }
 
     // -----------------------------------------------------
@@ -528,53 +541,14 @@ public class TomcatBoot {
     //                                                                Set up Configuration
     //                                                                ====================
     protected void setupServerConfigIfNeeds() {
-        if (configProps == null) {
-            return;
-        }
-        info("...Reflecting configuration to server: " + resolvedConfigFile);
-        reflectConfigToServer(server, server.getConnector(), configProps);
-    }
-
-    protected void reflectConfigToServer(Tomcat server, Connector connector, Properties props) { // you can override
-        final String uriEncoding = props.getProperty("tomcat.URIEncoding");
-        if (uriEncoding != null) {
-            info(" tomcat.URIEncoding = " + uriEncoding);
-            connector.setURIEncoding(uriEncoding);
-        }
-        final String useBodyEncodingForURI = props.getProperty("tomcat.useBodyEncodingForURI");
-        if (useBodyEncodingForURI != null) {
-            info(" tomcat.useBodyEncodingForURI = " + useBodyEncodingForURI);
-            connector.setUseBodyEncodingForURI(useBodyEncodingForURI.equalsIgnoreCase("true"));
-        }
-        final String bindAddress = props.getProperty("tomcat.bindAddress");
-        if (bindAddress != null) {
-            info(" tomcat.bindAddress = " + bindAddress);
-            connector.setProperty("address", bindAddress);
-        }
+        propsTranslator.setupServerConfigIfNeeds(bootLogger, server, server.getConnector(), configProps, resolvedConfigFile);
     }
 
     // -----------------------------------------------------
     //                                   Resolve Environment
     //                                   -------------------
     protected String resolveConfigEnvPath(String envPath) { // almost same as Lasta Di's logic
-        if (envPath == null) {
-            throw new IllegalArgumentException("The argument 'envPath' should not be null.");
-        }
-        final String configEnv = getConfigEnv();
-        final String envMark = "_env.";
-        if (configEnv != null && envPath.contains(envMark)) {
-            // e.g. maihama_env.properties to maihama_env_production.properties
-            final int markIndex = envPath.indexOf(envMark);
-            final String front = envPath.substring(0, markIndex);
-            final String rear = envPath.substring(markIndex + envMark.length());
-            return front + "_env_" + configEnv + "." + rear;
-        } else {
-            return envPath;
-        }
-    }
-
-    protected String getConfigEnv() { // null allowed
-        return System.getProperty("lasta.env"); // uses Lasta Di's as default
+        return propsTranslator.resolveConfigEnvPath(envPath);
     }
 
     // ===================================================================================

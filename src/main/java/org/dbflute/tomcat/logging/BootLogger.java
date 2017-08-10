@@ -28,10 +28,10 @@ public class BootLogger {
     // ===================================================================================
     //                                                                           Attribute
     //                                                                           =========
-    protected final Logger logger; // null allowed
     protected final String loggingFile; // null allowed
-    protected final Consumer<TomcatLoggingOption> loggingOptionCall;
-    protected final Properties configProps;
+    protected final Consumer<TomcatLoggingOption> loggingOptionCall; // null allowed (but not null if loggingFile exists)
+    protected final Properties configProps; // not null
+    protected final Logger logger; // null allowed
 
     // ===================================================================================
     //                                                                         Constructor
@@ -41,6 +41,8 @@ public class BootLogger {
         this.loggingOptionCall = loggingOptionCall;
         this.configProps = configProps;
         if (loggingFile != null) {
+            // #hope console settings will be overridden as tomcat default after creating tomcat instance... by jflute (2017/07/29)
+            // so your formatter setting is invalid in console, wants to fix it future
             createServerLoggingLoader().loadServerLogging();
             this.logger = Logger.getLogger(getClass().getPackage().getName());
         } else {
