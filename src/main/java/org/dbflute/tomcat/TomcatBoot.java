@@ -17,7 +17,6 @@ package org.dbflute.tomcat;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
@@ -28,7 +27,11 @@ import java.nio.file.Paths;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.Date;
+import java.util.List;
 import java.util.Properties;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -84,6 +87,7 @@ public class TomcatBoot {
     protected boolean useWebFragmentsDetect;
     protected Predicate<String> webFragmentsSelector; // null allowed
     protected String configFile; // null allowed
+    protected String[] extendsConfigFiles; // null allowed
     protected String loggingFile; // null allowed
     protected Consumer<TomcatLoggingOption> loggingOptionCall; // null allowed (but not null if loggingFile exists)
     protected String baseDir; // null allowed
@@ -91,8 +95,8 @@ public class TomcatBoot {
     // -----------------------------------------------------
     //                                              Stateful
     //                                              --------
-    protected String resolvedConfigFile; // null allowed (but not null if configFile exists after ready)
     protected Properties configProps; // null allowed (but not null if configFile exists after ready)
+    protected List<String> readConfigList; // null allowed (but not null if configFile exists after ready), basically for logging
     protected BootLogger bootLogger; // not null after ready
     protected Tomcat server; // not null after preparing server
 
@@ -195,11 +199,15 @@ public class TomcatBoot {
         return this;
     }
 
-    public TomcatBoot configure(String configFile) {
+    public TomcatBoot configure(String configFile, String... extendsConfigFiles) {
         if (configFile == null || configFile.trim().length() == 0) {
             throw new IllegalArgumentException("The argument 'configFile' should not be null or empty: " + configFile);
         }
+        if (extendsConfigFiles == null) {
+            throw new IllegalArgumentException("The argument 'extendsConfigFiles' should not be null or empty: configFile=" + configFile);
+        }
         this.configFile = configFile;
+        this.extendsConfigFiles = extendsConfigFiles;
         return this;
     }
 
@@ -243,20 +251,28 @@ public class TomcatBoot {
             return;
         }
         configProps = new Properties();
-        resolvedConfigFile = resolveConfigEnvPath(configFile);
-        final InputStream ins = getClass().getClassLoader().getResourceAsStream(resolvedConfigFile);
-        if (ins == null) {
-            throw new IllegalStateException("Not found the config file in classpath: " + resolvedConfigFile);
+        readConfigList = new ArrayList<String>();
+        if (extendsConfigFiles != null && extendsConfigFiles.length > 0) {
+            final List<String> extendsConfigFileList = new ArrayList<String>(Arrays.asList(extendsConfigFiles));
+            Collections.reverse(extendsConfigFileList); // to read from parent e.g. [maihama_env.properites, dockside_env.properites]
+            for (String extendsConfigFile : extendsConfigFileList) {
+                final String extendsResolvedFile = resolveConfigEnvPath(extendsConfigFile);
+                readConfigList.add(extendsResolvedFile);
+                configProps.putAll(readConfigProps(extendsResolvedFile)); // override old value by new value
+            }
         }
-        try {
-            configProps.load(ins);
-        } catch (IOException e) {
-            throw new IllegalStateException("Failed to load the config resource as stream: " + resolvedConfigFile, e);
-        } finally {
-            try {
-                ins.close();
-            } catch (IOException ignored) {}
-        }
+        final String resolvedFile = resolveConfigEnvPath(configFile); // main properties
+        readConfigList.add(resolvedFile);
+        configProps.putAll(readConfigProps(resolvedFile)); // override old value by new value
+        Collections.reverse(readConfigList); // for e.g. [dockside_env.properites, maihama_env.properites]
+    }
+
+    protected String resolveConfigEnvPath(String envPath) { // almost same as Lasta Di's logic
+        return propsTranslator.resolveConfigEnvPath(envPath);
+    }
+
+    protected Properties readConfigProps(String propFile) {
+        return propsTranslator.readConfigProps(propFile);
     }
 
     protected void loadServerLoggingIfNeeds() { // should be called after configuration
@@ -355,7 +371,7 @@ public class TomcatBoot {
     }
 
     protected AccessLogOption prepareAccessLogOption() {
-        return propsTranslator.prepareAccessLogOption(bootLogger, configProps, resolvedConfigFile); // null allowed
+        return propsTranslator.prepareAccessLogOption(bootLogger, configProps, readConfigList); // null allowed
     }
 
     // -----------------------------------------------------
@@ -541,14 +557,7 @@ public class TomcatBoot {
     //                                                                Set up Configuration
     //                                                                ====================
     protected void setupServerConfigIfNeeds() {
-        propsTranslator.setupServerConfigIfNeeds(bootLogger, server, server.getConnector(), configProps, resolvedConfigFile);
-    }
-
-    // -----------------------------------------------------
-    //                                   Resolve Environment
-    //                                   -------------------
-    protected String resolveConfigEnvPath(String envPath) { // almost same as Lasta Di's logic
-        return propsTranslator.resolveConfigEnvPath(envPath);
+        propsTranslator.setupServerConfigIfNeeds(bootLogger, server, server.getConnector(), configProps, readConfigList);
     }
 
     // ===================================================================================

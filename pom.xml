@@ -4,7 +4,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>org.dbflute.tomcat</groupId>
 	<artifactId>tomcat-boot</artifactId>
-	<version>0.5.6</version>
+	<version>0.5.7</version>
 	<packaging>jar</packaging>
 
 	<name>Tomcat Boot</name>
