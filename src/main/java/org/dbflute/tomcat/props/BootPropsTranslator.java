@@ -15,6 +15,9 @@
  */
 package org.dbflute.tomcat.props;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.List;
 import java.util.Properties;
 import java.util.function.Consumer;
 
@@ -54,9 +57,30 @@ public class BootPropsTranslator {
     }
 
     // ===================================================================================
+    //                                                                Configuration Reader
+    //                                                                ====================
+    public Properties readConfigProps(String propFile) {
+        final InputStream ins = getClass().getClassLoader().getResourceAsStream(propFile);
+        if (ins == null) {
+            throw new IllegalStateException("Not found the config file in classpath: " + propFile);
+        }
+        final Properties props = new Properties();
+        try {
+            props.load(ins);
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to load the config resource as stream: " + propFile, e);
+        } finally {
+            try {
+                ins.close();
+            } catch (IOException ignored) {}
+        }
+        return props;
+    }
+
+    // ===================================================================================
     //                                                                   Access Log Option
     //                                                                   =================
-    public AccessLogOption prepareAccessLogOption(BootLogger logger, Properties props, String resolvedConfigFile) { // null allowed
+    public AccessLogOption prepareAccessLogOption(BootLogger logger, Properties props, List<String> readConfigList) { // null allowed
         if (props == null) {
             return null;
         }
@@ -64,7 +88,7 @@ public class BootPropsTranslator {
         if (enabled == null || !enabled.equalsIgnoreCase("true")) {
             return null;
         }
-        logger.info("...Preparing tomcat access log: enabled=" + enabled + ", config=" + resolvedConfigFile);
+        logger.info("...Preparing tomcat access log: enabled=" + enabled + ", config=" + readConfigList);
         final AccessLogOption option = new AccessLogOption();
         doPrepareAccessLogOption(logger, props, "logDir", value -> option.logDir(value));
         doPrepareAccessLogOption(logger, props, "filePrefix", value -> option.filePrefix(value));
@@ -87,11 +111,11 @@ public class BootPropsTranslator {
     //                                                                Server Configuration
     //                                                                ====================
     public void setupServerConfigIfNeeds(BootLogger logger, Tomcat server, Connector connector, Properties props,
-            String resolvedConfigFile) {
+            List<String> readConfigList) {
         if (props == null) {
             return;
         }
-        logger.info("...Reflecting configuration to server: config=" + resolvedConfigFile);
+        logger.info("...Reflecting configuration to server: config=" + readConfigList);
         final String uriEncoding = props.getProperty("tomcat.URIEncoding");
         if (uriEncoding != null) {
             logger.info(" tomcat.URIEncoding = " + uriEncoding);
