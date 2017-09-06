@@ -46,7 +46,7 @@ public class YourValveOption {
     // ===================================================================================
     //                                                                            Accessor
     //                                                                            ========
-    public List<Valve> getValveList() {
-        return valveList != null ? valveList : Collections.emptyList();
+    public List<Valve> getValveList() { // read-only
+        return valveList != null ? Collections.unmodifiableList(valveList) : Collections.emptyList();
     }
 }
