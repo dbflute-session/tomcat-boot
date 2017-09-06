@@ -43,6 +43,7 @@ import javax.servlet.ServletException;
 import org.apache.catalina.Context;
 import org.apache.catalina.Globals;
 import org.apache.catalina.Host;
+import org.apache.catalina.Valve;
 import org.apache.catalina.core.StandardHost;
 import org.apache.catalina.startup.Tomcat;
 import org.dbflute.tomcat.core.RhythmicalHandlingDef.AnnotationHandling;
@@ -277,12 +278,14 @@ public class TomcatBoot {
         return this;
     }
 
-    public TomcatBoot valve(YourValveOpCall opLambda) {
-        if (opLambda == null) {
-            throw new IllegalArgumentException("The argument 'opLambda' should not be null.");
+    public TomcatBoot valve(Valve yourValve) {
+        if (yourValve == null) {
+            throw new IllegalArgumentException("The argument 'yourValve' should not be null.");
         }
-        final YourValveOption op = createYourValveOption(opLambda);
-        yourValveOption = op;
+        if (yourValveOption == null) {
+            yourValveOption = new YourValveOption();
+        }
+        yourValveOption.valve(yourValve);
         return this;
     }
 
