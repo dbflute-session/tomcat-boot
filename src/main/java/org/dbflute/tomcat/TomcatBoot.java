@@ -53,7 +53,6 @@ import org.dbflute.tomcat.core.RhythmicalHandlingDef.WebFragmentsHandling;
 import org.dbflute.tomcat.core.RhythmicalTomcat;
 import org.dbflute.tomcat.core.accesslog.AccessLogOption;
 import org.dbflute.tomcat.core.context.ContextSetupper;
-import org.dbflute.tomcat.core.valve.YourValveOpCall;
 import org.dbflute.tomcat.core.valve.YourValveOption;
 import org.dbflute.tomcat.logging.BootLogger;
 import org.dbflute.tomcat.logging.TomcatLoggingOption;
@@ -305,12 +304,6 @@ public class TomcatBoot {
         }
         yourValveOption.valve(yourValve);
         return this;
-    }
-
-    protected YourValveOption createYourValveOption(YourValveOpCall opLambda) {
-        final YourValveOption op = new YourValveOption();
-        opLambda.callback(op);
-        return op;
     }
 
     /**
