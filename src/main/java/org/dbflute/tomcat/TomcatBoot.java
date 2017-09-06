@@ -157,6 +157,10 @@ public class TomcatBoot {
         return this;
     }
 
+    /**
+     * Browse on desktop automatically after boot finished.
+     * @return this. (NotNull)
+     */
     public TomcatBoot browseOnDesktop() {
         // wants to use this in production (e.g. DBFlute Intro) 
         //assertDevelopmentState();
@@ -164,6 +168,10 @@ public class TomcatBoot {
         return this;
     }
 
+    /**
+     * Suppress shutdown hook. (for development only)
+     * @return this. (NotNull)
+     */
     public TomcatBoot suppressShutdownHook() {
         assertDevelopmentState();
         suppressShutdownHook = true;
@@ -273,11 +281,21 @@ public class TomcatBoot {
         return this;
     }
 
+    /**
+     * Set base directory of tomcat server.
+     * @param baseDir The base directory for Tomcat@setBaseDir(). (NotNull)
+     * @return this. (NotNull)
+     */
     public TomcatBoot atBaseDir(String baseDir) {
         this.baseDir = baseDir;
         return this;
     }
 
+    /**
+     * Add your valve for tomcat server. (can be called several times)
+     * @param yourValve The your valve. (NotNull)
+     * @return this. (NotNull)
+     */
     public TomcatBoot valve(Valve yourValve) {
         if (yourValve == null) {
             throw new IllegalArgumentException("The argument 'yourValve' should not be null.");
@@ -295,6 +313,10 @@ public class TomcatBoot {
         return op;
     }
 
+    /**
+     * @param oneArgLambda The setupper of tomcat context. (NotNull)
+     * @return this. (NotNull)
+     */
     public TomcatBoot asYouLikeIt(ContextSetupper oneArgLambda) {
         if (oneArgLambda == null) {
             throw new IllegalArgumentException("The argument 'oneArgLambda' should not be null.");
