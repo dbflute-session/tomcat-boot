@@ -24,6 +24,7 @@ import org.apache.catalina.Context;
 import org.apache.catalina.Host;
 import org.apache.catalina.Lifecycle;
 import org.apache.catalina.LifecycleEvent;
+import org.apache.catalina.Valve;
 import org.apache.catalina.Wrapper;
 import org.apache.catalina.core.StandardContext;
 import org.apache.catalina.core.StandardHost;
@@ -36,6 +37,8 @@ import org.dbflute.tomcat.core.RhythmicalHandlingDef.MetaInfoResourceHandling;
 import org.dbflute.tomcat.core.RhythmicalHandlingDef.TldHandling;
 import org.dbflute.tomcat.core.RhythmicalHandlingDef.WebFragmentsHandling;
 import org.dbflute.tomcat.core.accesslog.AccessLogOption;
+import org.dbflute.tomcat.core.context.ContextSetupper;
+import org.dbflute.tomcat.core.valve.YourValveOption;
 import org.dbflute.tomcat.logging.BootLogger;
 
 /**
@@ -51,16 +54,18 @@ public class RhythmicalTomcat extends Tomcat { // e.g. to remove org.eclipse.jet
     protected final MetaInfoResourceHandling metaInfoResourceHandling;
     protected final TldHandling tldHandling;
     protected final WebFragmentsHandling webFragmentsHandling;
-    protected final Predicate<String> webFragmentsSelector; // null allowed
+    protected final Predicate<String> webFragmentsSelector; // null allowed, selector is not required
     protected final AccessLogOption accessLogOption; // null allowed, use access log if exists
+    protected final YourValveOption yourValveOption; // null allowed, for user options
+    protected final ContextSetupper contextSetupper; // null allowed, for user options
 
     // ===================================================================================
     //                                                                         Constructor
     //                                                                         ===========
     public RhythmicalTomcat(BootLogger bootLogger // logger
             , AnnotationHandling annotationHandling, MetaInfoResourceHandling metaInfoResourceHandling // handlers
-            , TldHandling tldHandling, WebFragmentsHandling webFragmentsHandling // more handlers
-            , Predicate<String> webFragmentsSelector, AccessLogOption accessLogOption) { // options
+            , TldHandling tldHandling, WebFragmentsHandling webFragmentsHandling, Predicate<String> webFragmentsSelector // more handlers
+            , AccessLogOption accessLogOption, YourValveOption yourValveOption, ContextSetupper contextSetupper) { // options
         this.bootLogger = bootLogger;
         this.annotationHandling = annotationHandling;
         this.metaInfoResourceHandling = metaInfoResourceHandling;
@@ -68,6 +73,8 @@ public class RhythmicalTomcat extends Tomcat { // e.g. to remove org.eclipse.jet
         this.webFragmentsHandling = webFragmentsHandling;
         this.webFragmentsSelector = webFragmentsSelector;
         this.accessLogOption = accessLogOption;
+        this.yourValveOption = yourValveOption;
+        this.contextSetupper = contextSetupper;
     }
 
     // ===================================================================================
@@ -137,6 +144,10 @@ public class RhythmicalTomcat extends Tomcat { // e.g. to remove org.eclipse.jet
             throw new IllegalArgumentException(msg, e);
         }
         setupAccessLogIfNeeds(ctx);
+        setupYourValveIfNeeds(ctx);
+        if (contextSetupper != null) {
+            contextSetupper.setup(ctx);
+        }
         return ctx;
     }
 
@@ -151,6 +162,15 @@ public class RhythmicalTomcat extends Tomcat { // e.g. to remove org.eclipse.jet
             valve.setEncoding(accessLogOption.getFileEncoding().orElse("UTF-8"));
             valve.setPattern(accessLogOption.getFormatPattern().orElse("common"));
             stdctx.addValve(valve);
+        }
+    }
+
+    protected void setupYourValveIfNeeds(Context ctx) {
+        if (yourValveOption != null && ctx instanceof StandardContext) { // also check context type just in case
+            final StandardContext stdctx = (StandardContext) ctx;
+            for (Valve valve : yourValveOption.getValveList()) {
+                stdctx.addValve(valve);
+            }
         }
     }
 

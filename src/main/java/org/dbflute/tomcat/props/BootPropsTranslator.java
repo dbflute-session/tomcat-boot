@@ -85,7 +85,7 @@ public class BootPropsTranslator {
             return null;
         }
         final String enabled = props.getProperty("tomcat.accesslog.enabled");
-        if (enabled == null || !enabled.equalsIgnoreCase("true")) {
+        if (enabled == null || !isSrtingBooleanTrue(enabled)) {
             return null;
         }
         logger.info("...Preparing tomcat access log: enabled=" + enabled + ", config=" + readConfigList);
@@ -116,20 +116,27 @@ public class BootPropsTranslator {
             return;
         }
         logger.info("...Reflecting configuration to server: config=" + readConfigList);
-        final String uriEncoding = props.getProperty("tomcat.URIEncoding");
-        if (uriEncoding != null) {
-            logger.info(" tomcat.URIEncoding = " + uriEncoding);
-            connector.setURIEncoding(uriEncoding);
+        doSetupServerConfig(logger, props, "URIEncoding", value -> connector.setURIEncoding(value));
+        doSetupServerConfig(logger, props, "useBodyEncodingForURI", value -> {
+            connector.setUseBodyEncodingForURI(isSrtingBooleanTrue(value));
+        });
+        doSetupServerConfig(logger, props, "secure", value -> connector.setSecure(isSrtingBooleanTrue(value)));
+        doSetupServerConfig(logger, props, "scheme", value -> connector.setScheme(value));
+        doSetupServerConfig(logger, props, "bindAddress", value -> connector.setProperty("address", value));
+    }
+
+    protected void doSetupServerConfig(BootLogger logger, Properties props, String keyword, Consumer<String> reflector) {
+        final String value = props.getProperty("tomcat." + keyword);
+        if (value != null) {
+            logger.info(" tomcat." + keyword + " = " + value);
+            reflector.accept(value);
         }
-        final String useBodyEncodingForURI = props.getProperty("tomcat.useBodyEncodingForURI");
-        if (useBodyEncodingForURI != null) {
-            logger.info(" tomcat.useBodyEncodingForURI = " + useBodyEncodingForURI);
-            connector.setUseBodyEncodingForURI(useBodyEncodingForURI.equalsIgnoreCase("true"));
-        }
-        final String bindAddress = props.getProperty("tomcat.bindAddress");
-        if (bindAddress != null) {
-            logger.info(" tomcat.bindAddress = " + bindAddress);
-            connector.setProperty("address", bindAddress);
-        }
+    }
+
+    // ===================================================================================
+    //                                                                        Assist Logic
+    //                                                                        ============
+    protected boolean isSrtingBooleanTrue(String value) {
+        return value.equalsIgnoreCase("true");
     }
 }

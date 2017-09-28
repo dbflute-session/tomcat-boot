@@ -43,6 +43,7 @@ import javax.servlet.ServletException;
 import org.apache.catalina.Context;
 import org.apache.catalina.Globals;
 import org.apache.catalina.Host;
+import org.apache.catalina.Valve;
 import org.apache.catalina.core.StandardHost;
 import org.apache.catalina.startup.Tomcat;
 import org.dbflute.tomcat.core.RhythmicalHandlingDef.AnnotationHandling;
@@ -51,6 +52,8 @@ import org.dbflute.tomcat.core.RhythmicalHandlingDef.TldHandling;
 import org.dbflute.tomcat.core.RhythmicalHandlingDef.WebFragmentsHandling;
 import org.dbflute.tomcat.core.RhythmicalTomcat;
 import org.dbflute.tomcat.core.accesslog.AccessLogOption;
+import org.dbflute.tomcat.core.context.ContextSetupper;
+import org.dbflute.tomcat.core.valve.YourValveOption;
 import org.dbflute.tomcat.logging.BootLogger;
 import org.dbflute.tomcat.logging.TomcatLoggingOption;
 import org.dbflute.tomcat.props.BootPropsTranslator;
@@ -91,6 +94,8 @@ public class TomcatBoot {
     protected String loggingFile; // null allowed
     protected Consumer<TomcatLoggingOption> loggingOptionCall; // null allowed (but not null if loggingFile exists)
     protected String baseDir; // null allowed
+    protected YourValveOption yourValveOption; // null allowed
+    protected ContextSetupper contextSetupper; // null allowed
 
     // -----------------------------------------------------
     //                                              Stateful
@@ -112,21 +117,49 @@ public class TomcatBoot {
     // ===================================================================================
     //                                                                         Constructor
     //                                                                         ===========
+    /**
+     * Create with port number and context path.
+     * <pre>
+     * e.g. has context path
+     *  TomcatBoot boot = new TomcatBoot(8152, "/fortress");
+     * 
+     * e.g. no context path
+     *  TomcatBoot boot = new TomcatBoot(8152, "");
+     * </pre>
+     * @param port The port number for the tomcat server.
+     * @param contextPath The context path for the tomcat server, basically has slash prefix. (NotNull, EmptyAllowed)
+     */
     public TomcatBoot(int port, String contextPath) {
+        if (contextPath == null) {
+            throw new IllegalArgumentException("The argument 'contextPath' should not be null.");
+        }
         this.port = port;
         this.contextPath = contextPath;
     }
 
+    /**
+     * Does it boot the tomcat server as development mode?
+     * @return this. (NotNull)
+     */
     public TomcatBoot asDevelopment() {
         development = true;
         return this;
     }
 
+    /**
+     * Does it boot the tomcat server as development mode?
+     * @param development Is it development mode?
+     * @return this. (NotNull)
+     */
     public TomcatBoot asDevelopment(boolean development) {
         this.development = development;
         return this;
     }
 
+    /**
+     * Browse on desktop automatically after boot finished.
+     * @return this. (NotNull)
+     */
     public TomcatBoot browseOnDesktop() {
         // wants to use this in production (e.g. DBFlute Intro) 
         //assertDevelopmentState();
@@ -134,6 +167,10 @@ public class TomcatBoot {
         return this;
     }
 
+    /**
+     * Suppress shutdown hook. (for development only)
+     * @return this. (NotNull)
+     */
     public TomcatBoot suppressShutdownHook() {
         assertDevelopmentState();
         suppressShutdownHook = true;
@@ -199,6 +236,15 @@ public class TomcatBoot {
         return this;
     }
 
+    /**
+     * You can configure tomcat options by application properties.
+     * <pre>
+     * boot.configure("fortress_config.properties", "fortress_env.properties");
+     * </pre>
+     * @param configFile The path of configuration file in classpath. (NotNull)
+     * @param extendsConfigFiles The paths of super configuration files. (NotNull, EmptyAllowed)
+     * @return this. (NotNull)
+     */
     public TomcatBoot configure(String configFile, String... extendsConfigFiles) {
         if (configFile == null || configFile.trim().length() == 0) {
             throw new IllegalArgumentException("The argument 'configFile' should not be null or empty: " + configFile);
@@ -211,6 +257,17 @@ public class TomcatBoot {
         return this;
     }
 
+    /**
+     * You can set tomcat logging by application properties.
+     * <pre>
+     * boot.logging("tomcat_logging.properties", op -&gt; {
+     *     op.replace("tomcat.log.name", "catalina_out");
+     * }); // uses jdk14logger
+     * </pre>
+     * @param loggingFile The path of logging file in classpath. (NotNull)
+     * @param opLambda The callback for logging option. (NotNull)
+     * @return this. (NotNull)
+     */
     public TomcatBoot logging(String loggingFile, Consumer<TomcatLoggingOption> opLambda) {
         if (loggingFile == null || loggingFile.trim().length() == 0) {
             throw new IllegalArgumentException("The argument 'loggingFile' should not be null or empty: " + loggingFile);
@@ -223,8 +280,42 @@ public class TomcatBoot {
         return this;
     }
 
+    /**
+     * Set base directory of tomcat server.
+     * @param baseDir The base directory for Tomcat@setBaseDir(). (NotNull)
+     * @return this. (NotNull)
+     */
     public TomcatBoot atBaseDir(String baseDir) {
         this.baseDir = baseDir;
+        return this;
+    }
+
+    /**
+     * Add your valve for tomcat server. (can be called several times)
+     * @param yourValve The your valve. (NotNull)
+     * @return this. (NotNull)
+     */
+    public TomcatBoot valve(Valve yourValve) {
+        if (yourValve == null) {
+            throw new IllegalArgumentException("The argument 'yourValve' should not be null.");
+        }
+        if (yourValveOption == null) {
+            yourValveOption = new YourValveOption();
+        }
+        yourValveOption.valve(yourValve);
+        return this;
+    }
+
+    /**
+     * You can customize tomcat context as you like (it).
+     * @param oneArgLambda The setupper of tomcat context. (NotNull)
+     * @return this. (NotNull)
+     */
+    public TomcatBoot asYouLikeIt(ContextSetupper oneArgLambda) {
+        if (oneArgLambda == null) {
+            throw new IllegalArgumentException("The argument 'oneArgLambda' should not be null.");
+        }
+        contextSetupper = oneArgLambda;
         return this;
     }
 
@@ -316,20 +407,28 @@ public class TomcatBoot {
         final String warPath = prepareWarPath();
         try {
             if (warPath.endsWith(".war")) {
-                server.addWebapp(contextPath, warPath);
-                if (!isUnpackWARsDisabled()) {
-                    prepareUnpackWARsEnv();
-                }
+                doSetupWebappContextWar(warPath);
             } else {
-                final String webappPath = prepareWebappPath();
-                final String docBase = new File(webappPath).getAbsolutePath();
-                final Context context = server.addWebapp(contextPath, docBase);
-                final String webXmlPath = prepareWebXmlPath(webappPath);
-                context.getServletContext().setAttribute(Globals.ALT_DD_ATTR, webXmlPath);
+                doSetupWebappContextWebappDir();
             }
         } catch (ServletException e) {
             throw new IllegalStateException("Failed to set up web context: warPath=" + warPath, e);
         }
+    }
+
+    protected void doSetupWebappContextWar(String warPath) throws ServletException {
+        server.addWebapp(contextPath, warPath);
+        if (!isUnpackWARsDisabled()) {
+            prepareUnpackWARsEnv();
+        }
+    }
+
+    protected void doSetupWebappContextWebappDir() throws ServletException {
+        final String webappPath = prepareWebappPath();
+        final String docBase = new File(webappPath).getAbsolutePath();
+        final Context context = server.addWebapp(contextPath, docBase);
+        final String webXmlPath = prepareWebXmlPath(webappPath);
+        context.getServletContext().setAttribute(Globals.ALT_DD_ATTR, webXmlPath);
     }
 
     protected Tomcat createTomcat() {
@@ -339,15 +438,18 @@ public class TomcatBoot {
         final WebFragmentsHandling webFragmentsHandling = prepareuseWebFragmentsHandling();
         final Predicate<String> webFragmentsSelector = prepareWebFragmentsSelector(); // null allowed
         final AccessLogOption accessLogOption = prepareAccessLogOption(); // null allowed
+        final YourValveOption yourValveOption = prepareYourValveOption(); // null allowed
+        final ContextSetupper contextSetupper = prepareContextSetupper(); // null allowed
         return newRhythmicalTomcat(bootLogger, annotationHandling, metaInfoResourceHandling, tldHandling // 
-                , webFragmentsHandling, webFragmentsSelector, accessLogOption);
+                , webFragmentsHandling, webFragmentsSelector, accessLogOption, yourValveOption, contextSetupper);
     }
 
     protected RhythmicalTomcat newRhythmicalTomcat(BootLogger bootLogger, AnnotationHandling annotationHandling,
             MetaInfoResourceHandling metaInfoResourceHandling, TldHandling tldHandling, WebFragmentsHandling webFragmentsHandling,
-            Predicate<String> webFragmentsSelector, AccessLogOption accessLogOption) {
+            Predicate<String> webFragmentsSelector, AccessLogOption accessLogOption, YourValveOption yourValveOption,
+            ContextSetupper contextSetupper) {
         return new RhythmicalTomcat(bootLogger, annotationHandling, metaInfoResourceHandling, tldHandling //
-                , webFragmentsHandling, webFragmentsSelector, accessLogOption);
+                , webFragmentsHandling, webFragmentsSelector, accessLogOption, yourValveOption, contextSetupper);
     }
 
     protected AnnotationHandling prepareAnnotationHandling() {
@@ -372,6 +474,14 @@ public class TomcatBoot {
 
     protected AccessLogOption prepareAccessLogOption() {
         return propsTranslator.prepareAccessLogOption(bootLogger, configProps, readConfigList); // null allowed
+    }
+
+    protected YourValveOption prepareYourValveOption() {
+        return yourValveOption; // null allowed
+    }
+
+    protected ContextSetupper prepareContextSetupper() {
+        return contextSetupper; // null allowed
     }
 
     // -----------------------------------------------------
