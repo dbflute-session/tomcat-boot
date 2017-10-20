@@ -137,6 +137,9 @@ public class TomcatBoot {
         this.contextPath = contextPath;
     }
 
+    // -----------------------------------------------------
+    //                                                Option
+    //                                                ------
     /**
      * Does it boot the tomcat server as development mode?
      * @return this. (NotNull)
@@ -194,7 +197,7 @@ public class TomcatBoot {
 
     /**
      * You can detect 'META-INF' resources in jar files detected as web fragments. <br>
-     * So you also needs to enable web fragments detect.
+     * <span style="color: #CC4747; font-size: 120%">So you also needs to enable web fragments detect.</span>
      * @return this. (NotNull)
      */
     public TomcatBoot useMetaInfoResourceDetect() { // also needs web fragments detect
@@ -224,7 +227,7 @@ public class TomcatBoot {
      * You can detect web fragments in selected jar files.
      * <pre>
      * boot.useMetaInfoResourceDetect().useWebFragmentsDetect(jarName -&gt; { // for swagger
-     *     return jarName.contains("swagger");
+     *     return jarName.contains("swagger-ui");
      * });
      * </pre>
      * @param oneArgLambda The callback for selector of web fragments, argument is jar name. (NotNull)
