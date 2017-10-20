@@ -101,7 +101,7 @@ public class BootPropsTranslator {
 
     protected void doPrepareAccessLogOption(BootLogger logger, Properties props, String keyword, Consumer<String> reflector) {
         final String value = props.getProperty("tomcat.accesslog." + keyword);
-        if (value != null) {
+        if (value != null && !value.isEmpty()) {
             logger.info(" tomcat.accesslog." + keyword + " = " + value);
             reflector.accept(value);
         }
