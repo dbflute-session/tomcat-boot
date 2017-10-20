@@ -128,7 +128,7 @@ public class BootPropsTranslator {
 
     protected void doSetupServerConfig(BootLogger logger, Properties props, String keyword, Consumer<String> reflector) {
         final String value = props.getProperty("tomcat." + keyword);
-        if (value != null) {
+        if (value != null && !value.isEmpty()) {
             logger.info(" tomcat." + keyword + " = " + value);
             reflector.accept(value);
         }
