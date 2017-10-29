@@ -85,7 +85,7 @@ public class BootPropsTranslator {
             return null;
         }
         final String enabled = props.getProperty("tomcat.accesslog.enabled");
-        if (enabled == null || !isSrtingBooleanTrue(enabled)) {
+        if (enabled == null || !isStringBooleanTrue(enabled)) {
             return null;
         }
         logger.info("...Preparing tomcat access log: enabled=" + enabled + ", config=" + readConfigList);
@@ -101,7 +101,7 @@ public class BootPropsTranslator {
 
     protected void doPrepareAccessLogOption(BootLogger logger, Properties props, String keyword, Consumer<String> reflector) {
         final String value = props.getProperty("tomcat.accesslog." + keyword);
-        if (value != null) {
+        if (value != null && !value.isEmpty()) {
             logger.info(" tomcat.accesslog." + keyword + " = " + value);
             reflector.accept(value);
         }
@@ -118,16 +118,17 @@ public class BootPropsTranslator {
         logger.info("...Reflecting configuration to server: config=" + readConfigList);
         doSetupServerConfig(logger, props, "URIEncoding", value -> connector.setURIEncoding(value));
         doSetupServerConfig(logger, props, "useBodyEncodingForURI", value -> {
-            connector.setUseBodyEncodingForURI(isSrtingBooleanTrue(value));
+            connector.setUseBodyEncodingForURI(isStringBooleanTrue(value));
         });
-        doSetupServerConfig(logger, props, "secure", value -> connector.setSecure(isSrtingBooleanTrue(value)));
+        doSetupServerConfig(logger, props, "secure", value -> connector.setSecure(isStringBooleanTrue(value)));
         doSetupServerConfig(logger, props, "scheme", value -> connector.setScheme(value));
         doSetupServerConfig(logger, props, "bindAddress", value -> connector.setProperty("address", value));
+        doSetupServerConfig(logger, props, "proxyPort", value -> connector.setProxyPort(toInt("proxyPort(config)", value)));
     }
 
     protected void doSetupServerConfig(BootLogger logger, Properties props, String keyword, Consumer<String> reflector) {
         final String value = props.getProperty("tomcat." + keyword);
-        if (value != null) {
+        if (value != null && !value.isEmpty()) {
             logger.info(" tomcat." + keyword + " = " + value);
             reflector.accept(value);
         }
@@ -136,7 +137,15 @@ public class BootPropsTranslator {
     // ===================================================================================
     //                                                                        Assist Logic
     //                                                                        ============
-    protected boolean isSrtingBooleanTrue(String value) {
+    protected boolean isStringBooleanTrue(String value) {
         return value.equalsIgnoreCase("true");
+    }
+
+    protected int toInt(String property, String value) {
+        try {
+            return Integer.parseInt(value);
+        } catch (NumberFormatException e) {
+            throw new IllegalStateException("Failed to parse the value as int: property=" + property + " value=" + value);
+        }
     }
 }
