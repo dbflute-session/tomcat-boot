@@ -23,6 +23,8 @@ import java.util.function.Consumer;
 
 import org.apache.catalina.connector.Connector;
 import org.apache.catalina.startup.Tomcat;
+import org.apache.coyote.ProtocolHandler;
+import org.apache.coyote.http11.AbstractHttp11Protocol;
 import org.dbflute.tomcat.core.accesslog.AccessLogOption;
 import org.dbflute.tomcat.logging.BootLogger;
 
@@ -124,6 +126,9 @@ public class BootPropsTranslator {
         doSetupServerConfig(logger, props, "scheme", value -> connector.setScheme(value));
         doSetupServerConfig(logger, props, "bindAddress", value -> connector.setProperty("address", value));
         doSetupServerConfig(logger, props, "proxyPort", value -> connector.setProxyPort(toInt("proxyPort(config)", value)));
+        doSetupServerConfig(logger, props, "maxHttpHeaderSize", value -> {
+            reflectPropertyMaxHttpHeaderSize(logger, server, connector, value);
+        });
     }
 
     protected void doSetupServerConfig(BootLogger logger, Properties props, String keyword, Consumer<String> reflector) {
@@ -131,6 +136,16 @@ public class BootPropsTranslator {
         if (value != null && !value.isEmpty()) {
             logger.info(" tomcat." + keyword + " = " + value);
             reflector.accept(value);
+        }
+    }
+
+    protected void reflectPropertyMaxHttpHeaderSize(BootLogger logger, Tomcat server, Connector connector, String value) {
+        final ProtocolHandler protocolHandler = connector.getProtocolHandler();
+        if (protocolHandler instanceof AbstractHttp11Protocol<?>) {
+            final AbstractHttp11Protocol<?> protocol = (AbstractHttp11Protocol<?>) protocolHandler;
+            protocol.setMaxHttpHeaderSize(toInt("maxHttpHeaderSize(config)", value));
+        } else {
+            logger.info("Cannot set the property 'maxHttpHeaderSize' because of different protocol handler: " + protocolHandler);
         }
     }
 
