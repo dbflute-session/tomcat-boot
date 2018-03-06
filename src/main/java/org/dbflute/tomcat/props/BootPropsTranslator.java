@@ -98,6 +98,8 @@ public class BootPropsTranslator {
         doPrepareAccessLogOption(logger, props, "fileDateFormat", value -> option.fileDateFormat(value));
         doPrepareAccessLogOption(logger, props, "fileEncoding", value -> option.fileEncoding(value));
         doPrepareAccessLogOption(logger, props, "formatPattern", value -> option.formatPattern(value));
+        doPrepareAccessLogOption(logger, props, "conditionIf", value -> option.conditionIf(value));
+        doPrepareAccessLogOption(logger, props, "conditionUnless", value -> option.conditionUnless(value));
         return option;
     }
 

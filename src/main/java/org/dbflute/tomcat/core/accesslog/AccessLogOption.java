@@ -33,6 +33,8 @@ public class AccessLogOption {
     protected String fileDateFormat; // null allowed
     protected String fileEncoding; // null allowed
     protected String formatPattern; // null allowed
+    protected String conditionIf; // null allowed
+    protected String conditionUnless; // null allowed
 
     // ===================================================================================
     //                                                                         Easy-to-Use
@@ -67,6 +69,16 @@ public class AccessLogOption {
         return this;
     }
 
+    public AccessLogOption conditionIf(String conditionIf) {
+        this.conditionIf = conditionIf;
+        return this;
+    }
+
+    public AccessLogOption conditionUnless(String conditionUnless) {
+        this.conditionUnless = conditionUnless;
+        return this;
+    }
+
     // ===================================================================================
     //                                                                            Accessor
     //                                                                            ========
@@ -92,5 +104,13 @@ public class AccessLogOption {
 
     public Optional<String> getFormatPattern() {
         return Optional.ofNullable(formatPattern);
+    }
+
+    public Optional<String> getConditionIf() {
+        return Optional.ofNullable(conditionIf);
+    }
+
+    public Optional<String> getConditionUnless() {
+        return Optional.ofNullable(conditionUnless);
     }
 }
