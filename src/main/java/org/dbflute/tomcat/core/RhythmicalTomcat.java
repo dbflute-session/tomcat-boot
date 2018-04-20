@@ -161,6 +161,8 @@ public class RhythmicalTomcat extends Tomcat { // e.g. to remove org.eclipse.jet
             accessLogOption.getFileDateFormat().ifPresent(format -> valve.setFileDateFormat(format));
             valve.setEncoding(accessLogOption.getFileEncoding().orElse("UTF-8"));
             valve.setPattern(accessLogOption.getFormatPattern().orElse("common"));
+            accessLogOption.getConditionIf().ifPresent(cond -> valve.setConditionIf(cond));
+            accessLogOption.getConditionUnless().ifPresent(cond -> valve.setConditionUnless(cond));
             stdctx.addValve(valve);
         }
     }
