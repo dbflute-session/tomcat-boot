@@ -24,6 +24,7 @@ import org.apache.catalina.Context;
 import org.apache.catalina.Host;
 import org.apache.catalina.Lifecycle;
 import org.apache.catalina.LifecycleEvent;
+import org.apache.catalina.LifecycleListener;
 import org.apache.catalina.Valve;
 import org.apache.catalina.Wrapper;
 import org.apache.catalina.core.StandardContext;
@@ -100,7 +101,7 @@ public class RhythmicalTomcat extends Tomcat { // e.g. to remove org.eclipse.jet
     }
 
     @Override
-    public Context addWebapp(Host host, String contextPath, String docBase, ContextConfig config) {
+    public Context addWebapp(Host host, String contextPath, String docBase, LifecycleListener config) {
         // quit because of private and unneeded
         //silence(host, contextPath);
 
@@ -112,8 +113,10 @@ public class RhythmicalTomcat extends Tomcat { // e.g. to remove org.eclipse.jet
 
         ctx.addLifecycleListener(config);
 
-        // prevent it from looking ( if it finds one - it'll have dup error )
-        config.setDefaultWebXml(noDefaultWebXmlPath());
+        if (config instanceof ContextConfig) {
+            // prevent it from looking ( if it finds one - it'll have dup error )
+            ((ContextConfig) config).setDefaultWebXml(noDefaultWebXmlPath());
+        }
 
         if (host == null) {
             getHost().addChild(ctx);
