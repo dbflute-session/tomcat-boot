@@ -13,19 +13,30 @@
  * either express or implied. See the License for the specific language
  * governing permissions and limitations under the License.
  */
-package org.dbflute.tomcat.core.context;
+package org.dbflute.tomcat.core.likeit;
 
 import org.apache.catalina.Context;
+import org.apache.catalina.Host;
 
 /**
  * @author jflute
- * @since 0.5.8 (2017/09/06 Wednesday)
+ * @since 0.7.1 (2019/01/20 Sunday at showbase)
  */
-public interface ContextSetupper {
+public class LikeItCatalinaResource {
 
-    /**
-     * Set up the context as you like it.
-     * @param context The context added to tomcat server. (NotNull)
-     */
-    void setup(Context context);
+    protected final Host host; // not null
+    protected final Context context; // not null
+
+    public LikeItCatalinaResource(Host host, Context context) {
+        this.host = host;
+        this.context = context;
+    }
+
+    public Host getHost() {
+        return host;
+    }
+
+    public Context getContext() {
+        return context;
+    }
 }

@@ -38,7 +38,8 @@ import org.dbflute.tomcat.core.RhythmicalHandlingDef.MetaInfoResourceHandling;
 import org.dbflute.tomcat.core.RhythmicalHandlingDef.TldHandling;
 import org.dbflute.tomcat.core.RhythmicalHandlingDef.WebFragmentsHandling;
 import org.dbflute.tomcat.core.accesslog.AccessLogOption;
-import org.dbflute.tomcat.core.context.ContextSetupper;
+import org.dbflute.tomcat.core.likeit.LikeItCatalinaResource;
+import org.dbflute.tomcat.core.likeit.LikeItCatalinaSetupper;
 import org.dbflute.tomcat.core.valve.YourValveOption;
 import org.dbflute.tomcat.logging.BootLogger;
 
@@ -58,7 +59,7 @@ public class RhythmicalTomcat extends Tomcat { // e.g. to remove org.eclipse.jet
     protected final Predicate<String> webFragmentsSelector; // null allowed, selector is not required
     protected final AccessLogOption accessLogOption; // null allowed, use access log if exists
     protected final YourValveOption yourValveOption; // null allowed, for user options
-    protected final ContextSetupper contextSetupper; // null allowed, for user options
+    protected final LikeItCatalinaSetupper likeitCatalinaSetupper; // null allowed, for user options
 
     // ===================================================================================
     //                                                                         Constructor
@@ -66,7 +67,7 @@ public class RhythmicalTomcat extends Tomcat { // e.g. to remove org.eclipse.jet
     public RhythmicalTomcat(BootLogger bootLogger // logger
             , AnnotationHandling annotationHandling, MetaInfoResourceHandling metaInfoResourceHandling // handlers
             , TldHandling tldHandling, WebFragmentsHandling webFragmentsHandling, Predicate<String> webFragmentsSelector // more handlers
-            , AccessLogOption accessLogOption, YourValveOption yourValveOption, ContextSetupper contextSetupper) { // options
+            , AccessLogOption accessLogOption, YourValveOption yourValveOption, LikeItCatalinaSetupper likeitCatalinaSetupper) { // options
         this.bootLogger = bootLogger;
         this.annotationHandling = annotationHandling;
         this.metaInfoResourceHandling = metaInfoResourceHandling;
@@ -75,7 +76,7 @@ public class RhythmicalTomcat extends Tomcat { // e.g. to remove org.eclipse.jet
         this.webFragmentsSelector = webFragmentsSelector;
         this.accessLogOption = accessLogOption;
         this.yourValveOption = yourValveOption;
-        this.contextSetupper = contextSetupper;
+        this.likeitCatalinaSetupper = likeitCatalinaSetupper;
     }
 
     // ===================================================================================
@@ -148,8 +149,8 @@ public class RhythmicalTomcat extends Tomcat { // e.g. to remove org.eclipse.jet
         }
         setupAccessLogIfNeeds(ctx);
         setupYourValveIfNeeds(ctx);
-        if (contextSetupper != null) {
-            contextSetupper.setup(ctx);
+        if (likeitCatalinaSetupper != null) {
+            likeitCatalinaSetupper.setup(new LikeItCatalinaResource(host, ctx));
         }
         return ctx;
     }
