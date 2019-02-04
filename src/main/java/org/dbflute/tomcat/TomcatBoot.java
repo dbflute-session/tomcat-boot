@@ -52,7 +52,7 @@ import org.dbflute.tomcat.core.RhythmicalHandlingDef.TldHandling;
 import org.dbflute.tomcat.core.RhythmicalHandlingDef.WebFragmentsHandling;
 import org.dbflute.tomcat.core.RhythmicalTomcat;
 import org.dbflute.tomcat.core.accesslog.AccessLogOption;
-import org.dbflute.tomcat.core.context.ContextSetupper;
+import org.dbflute.tomcat.core.likeit.LikeItCatalinaSetupper;
 import org.dbflute.tomcat.core.valve.YourValveOption;
 import org.dbflute.tomcat.logging.BootLogger;
 import org.dbflute.tomcat.logging.TomcatLoggingOption;
@@ -95,7 +95,7 @@ public class TomcatBoot {
     protected Consumer<TomcatLoggingOption> loggingOptionCall; // null allowed (but not null if loggingFile exists)
     protected String baseDir; // null allowed
     protected YourValveOption yourValveOption; // null allowed
-    protected ContextSetupper contextSetupper; // null allowed
+    protected LikeItCatalinaSetupper likeitCatalinaSetupper; // null allowed
 
     // -----------------------------------------------------
     //                                              Stateful
@@ -310,15 +310,15 @@ public class TomcatBoot {
     }
 
     /**
-     * You can customize tomcat context as you like (it).
-     * @param oneArgLambda The setupper of tomcat context. (NotNull)
+     * You can customize tomcat resource (e.g. host, context) as you like (it).
+     * @param resourceLambda The setupper of tomcat resource (e.g. host, context). (NotNull)
      * @return this. (NotNull)
      */
-    public TomcatBoot asYouLikeIt(ContextSetupper oneArgLambda) {
-        if (oneArgLambda == null) {
-            throw new IllegalArgumentException("The argument 'oneArgLambda' should not be null.");
+    public TomcatBoot asYouLikeIt(LikeItCatalinaSetupper resourceLambda) {
+        if (resourceLambda == null) {
+            throw new IllegalArgumentException("The argument 'resourceLambda' should not be null.");
         }
-        contextSetupper = oneArgLambda;
+        likeitCatalinaSetupper = resourceLambda;
         return this;
     }
 
@@ -442,17 +442,17 @@ public class TomcatBoot {
         final Predicate<String> webFragmentsSelector = prepareWebFragmentsSelector(); // null allowed
         final AccessLogOption accessLogOption = prepareAccessLogOption(); // null allowed
         final YourValveOption yourValveOption = prepareYourValveOption(); // null allowed
-        final ContextSetupper contextSetupper = prepareContextSetupper(); // null allowed
+        final LikeItCatalinaSetupper likeitCatalinaSetupper = prepareLikeItCatalinaSetupper(); // null allowed
         return newRhythmicalTomcat(bootLogger, annotationHandling, metaInfoResourceHandling, tldHandling // 
-                , webFragmentsHandling, webFragmentsSelector, accessLogOption, yourValveOption, contextSetupper);
+                , webFragmentsHandling, webFragmentsSelector, accessLogOption, yourValveOption, likeitCatalinaSetupper);
     }
 
     protected RhythmicalTomcat newRhythmicalTomcat(BootLogger bootLogger, AnnotationHandling annotationHandling,
             MetaInfoResourceHandling metaInfoResourceHandling, TldHandling tldHandling, WebFragmentsHandling webFragmentsHandling,
             Predicate<String> webFragmentsSelector, AccessLogOption accessLogOption, YourValveOption yourValveOption,
-            ContextSetupper contextSetupper) {
+            LikeItCatalinaSetupper likeitCatalinaSetupper) {
         return new RhythmicalTomcat(bootLogger, annotationHandling, metaInfoResourceHandling, tldHandling //
-                , webFragmentsHandling, webFragmentsSelector, accessLogOption, yourValveOption, contextSetupper);
+                , webFragmentsHandling, webFragmentsSelector, accessLogOption, yourValveOption, likeitCatalinaSetupper);
     }
 
     protected AnnotationHandling prepareAnnotationHandling() {
@@ -483,8 +483,8 @@ public class TomcatBoot {
         return yourValveOption; // null allowed
     }
 
-    protected ContextSetupper prepareContextSetupper() {
-        return contextSetupper; // null allowed
+    protected LikeItCatalinaSetupper prepareLikeItCatalinaSetupper() {
+        return likeitCatalinaSetupper; // null allowed
     }
 
     // -----------------------------------------------------
