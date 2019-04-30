@@ -795,6 +795,11 @@ public class TomcatBoot {
         } catch (Exception e) {
             throw new IllegalStateException("Failed to stop the Tomcat.", e);
         }
+        try {
+            server.destroy(); // since 0.7.2, it needs since Tomcat-9.0.[16/17]!? (could not boot new instance)
+        } catch (Exception e) {
+            throw new IllegalStateException("Failed to destroy the Tomcat.", e);
+        }
     }
 
     // ===================================================================================
