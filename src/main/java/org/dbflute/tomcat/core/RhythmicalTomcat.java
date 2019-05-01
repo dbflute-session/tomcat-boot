@@ -55,6 +55,7 @@ public class RhythmicalTomcat extends Tomcat { // e.g. to remove org.eclipse.jet
     protected final AnnotationHandling annotationHandling;
     protected final MetaInfoResourceHandling metaInfoResourceHandling;
     protected final TldHandling tldHandling;
+    protected final Predicate<String> tldFilesSelector; // null allowed, selector is not required
     protected final WebFragmentsHandling webFragmentsHandling;
     protected final Predicate<String> webFragmentsSelector; // null allowed, selector is not required
     protected final AccessLogOption accessLogOption; // null allowed, use access log if exists
@@ -64,14 +65,17 @@ public class RhythmicalTomcat extends Tomcat { // e.g. to remove org.eclipse.jet
     // ===================================================================================
     //                                                                         Constructor
     //                                                                         ===========
-    public RhythmicalTomcat(BootLogger bootLogger // logger
-            , AnnotationHandling annotationHandling, MetaInfoResourceHandling metaInfoResourceHandling // handlers
-            , TldHandling tldHandling, WebFragmentsHandling webFragmentsHandling, Predicate<String> webFragmentsSelector // more handlers
-            , AccessLogOption accessLogOption, YourValveOption yourValveOption, LikeItCatalinaSetupper likeitCatalinaSetupper) { // options
+    public RhythmicalTomcat(BootLogger bootLogger // has many arguments
+            , AnnotationHandling annotationHandling, MetaInfoResourceHandling metaInfoResourceHandling // meta
+            , TldHandling tldHandling, Predicate<String> tldFilesSelector // taglib files
+            , WebFragmentsHandling webFragmentsHandling, Predicate<String> webFragmentsSelector // web fragments
+            , AccessLogOption accessLogOption, YourValveOption yourValveOption, LikeItCatalinaSetupper likeitCatalinaSetupper // options
+    ) {
         this.bootLogger = bootLogger;
         this.annotationHandling = annotationHandling;
         this.metaInfoResourceHandling = metaInfoResourceHandling;
         this.tldHandling = tldHandling;
+        this.tldFilesSelector = tldFilesSelector;
         this.webFragmentsHandling = webFragmentsHandling;
         this.webFragmentsSelector = webFragmentsSelector;
         this.accessLogOption = accessLogOption;
@@ -90,15 +94,21 @@ public class RhythmicalTomcat extends Tomcat { // e.g. to remove org.eclipse.jet
     }
 
     protected ContextConfig createContextConfig() {
-        return newRhythmicalContextConfig(annotationHandling, metaInfoResourceHandling, tldHandling, webFragmentsHandling,
-                webFragmentsSelector);
+        return newRhythmicalContextConfig(annotationHandling, metaInfoResourceHandling // meta
+                , tldHandling, tldFilesSelector // taglib files
+                , webFragmentsHandling, webFragmentsSelector // web fragments
+        );
     }
 
-    protected RhythmicalContextConfig newRhythmicalContextConfig(AnnotationHandling annotationHandling,
-            MetaInfoResourceHandling metaInfoResourceHandling, TldHandling tldHandling, WebFragmentsHandling webFragmentsHandling,
-            Predicate<String> webFragmentsSelector) {
-        return new RhythmicalContextConfig(annotationHandling, metaInfoResourceHandling, tldHandling, webFragmentsHandling,
-                webFragmentsSelector);
+    protected RhythmicalContextConfig newRhythmicalContextConfig( // has many arguments
+            AnnotationHandling annotationHandling, MetaInfoResourceHandling metaInfoResourceHandling // meta
+            , TldHandling tldHandling, Predicate<String> tldFilesSelector // taglib files
+            , WebFragmentsHandling webFragmentsHandling, Predicate<String> webFragmentsSelector // web fragments
+    ) {
+        return new RhythmicalContextConfig(annotationHandling, metaInfoResourceHandling // meta
+                , tldHandling, tldFilesSelector // taglib files
+                , webFragmentsHandling, webFragmentsSelector // web fragments
+        );
     }
 
     @Override
