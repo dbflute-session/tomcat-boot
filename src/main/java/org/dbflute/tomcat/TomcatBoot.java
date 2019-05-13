@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2016 the original author or authors.
+ * Copyright 2015-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -87,6 +87,7 @@ public class TomcatBoot {
     protected boolean useAnnotationDetect;
     protected boolean useMetaInfoResourceDetect;
     protected boolean useTldDetect;
+    protected Predicate<String> tldFilesSelector; // null allowed
     protected boolean useWebFragmentsDetect;
     protected Predicate<String> webFragmentsSelector; // null allowed
     protected String configFile; // null allowed
@@ -211,6 +212,22 @@ public class TomcatBoot {
      */
     public TomcatBoot useTldDetect() {
         useTldDetect = true;
+        return this;
+    }
+
+    /**
+     * You can detect '.tdl' files in selected jar files.
+     * <pre>
+     * boot.useTldDetect(jarName -&gt; {
+     *     return jarName.contains("lasta-taglib");
+     * });
+     * </pre>
+     * @param oneArgLambda The callback for selector of tld files, argument is jar name. (NotNull)
+     * @return this. (NotNull)
+     */
+    public TomcatBoot useTldDetect(Predicate<String> oneArgLambda) { // you can select
+        useTldDetect = true;
+        tldFilesSelector = oneArgLambda;
         return this;
     }
 
@@ -438,21 +455,32 @@ public class TomcatBoot {
         final AnnotationHandling annotationHandling = prepareAnnotationHandling();
         final MetaInfoResourceHandling metaInfoResourceHandling = prepareMetaInfoResourceHandling();
         final TldHandling tldHandling = prepareTldHandling();
+        final Predicate<String> tldFilesSelector = prepareTldFilesSelector();
         final WebFragmentsHandling webFragmentsHandling = prepareuseWebFragmentsHandling();
         final Predicate<String> webFragmentsSelector = prepareWebFragmentsSelector(); // null allowed
         final AccessLogOption accessLogOption = prepareAccessLogOption(); // null allowed
         final YourValveOption yourValveOption = prepareYourValveOption(); // null allowed
         final LikeItCatalinaSetupper likeitCatalinaSetupper = prepareLikeItCatalinaSetupper(); // null allowed
-        return newRhythmicalTomcat(bootLogger, annotationHandling, metaInfoResourceHandling, tldHandling // 
-                , webFragmentsHandling, webFragmentsSelector, accessLogOption, yourValveOption, likeitCatalinaSetupper);
+        return newRhythmicalTomcat(bootLogger // has many arguments
+                , annotationHandling, metaInfoResourceHandling // meta
+                , tldHandling, tldFilesSelector // taglib files
+                , webFragmentsHandling, webFragmentsSelector // web fragments
+                , accessLogOption, yourValveOption, likeitCatalinaSetupper // options
+        );
     }
 
-    protected RhythmicalTomcat newRhythmicalTomcat(BootLogger bootLogger, AnnotationHandling annotationHandling,
-            MetaInfoResourceHandling metaInfoResourceHandling, TldHandling tldHandling, WebFragmentsHandling webFragmentsHandling,
-            Predicate<String> webFragmentsSelector, AccessLogOption accessLogOption, YourValveOption yourValveOption,
-            LikeItCatalinaSetupper likeitCatalinaSetupper) {
-        return new RhythmicalTomcat(bootLogger, annotationHandling, metaInfoResourceHandling, tldHandling //
-                , webFragmentsHandling, webFragmentsSelector, accessLogOption, yourValveOption, likeitCatalinaSetupper);
+    protected RhythmicalTomcat newRhythmicalTomcat(BootLogger bootLogger // logging
+            , AnnotationHandling annotationHandling, MetaInfoResourceHandling metaInfoResourceHandling // meta
+            , TldHandling tldHandling, Predicate<String> tldFilesSelector // tld files
+            , WebFragmentsHandling webFragmentsHandling, Predicate<String> webFragmentsSelector // web fragments
+            , AccessLogOption accessLogOption, YourValveOption yourValveOption, LikeItCatalinaSetupper likeitCatalinaSetupper // options
+    ) {
+        return new RhythmicalTomcat(bootLogger // has many arguments
+                , annotationHandling, metaInfoResourceHandling // meta
+                , tldHandling, tldFilesSelector // taglib files
+                , webFragmentsHandling, webFragmentsSelector // web fragments
+                , accessLogOption, yourValveOption, likeitCatalinaSetupper // options
+        );
     }
 
     protected AnnotationHandling prepareAnnotationHandling() {
@@ -465,6 +493,10 @@ public class TomcatBoot {
 
     protected TldHandling prepareTldHandling() {
         return useTldDetect ? TldHandling.DETECT : TldHandling.NONE;
+    }
+
+    protected Predicate<String> prepareTldFilesSelector() {
+        return tldFilesSelector; // null allowed
     }
 
     protected WebFragmentsHandling prepareuseWebFragmentsHandling() {
@@ -794,6 +826,11 @@ public class TomcatBoot {
             server.stop();
         } catch (Exception e) {
             throw new IllegalStateException("Failed to stop the Tomcat.", e);
+        }
+        try {
+            server.destroy(); // since 0.7.2, it needs since Tomcat-9.0.[16/17]!? (could not boot new instance)
+        } catch (Exception e) {
+            throw new IllegalStateException("Failed to destroy the Tomcat.", e);
         }
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2016 the original author or authors.
+ * Copyright 2015-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,6 @@
  */
 package org.apache.catalina.startup;
 
-import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -32,7 +31,6 @@ import org.dbflute.tomcat.core.RhythmicalHandlingDef.AnnotationHandling;
 import org.dbflute.tomcat.core.RhythmicalHandlingDef.MetaInfoResourceHandling;
 import org.dbflute.tomcat.core.RhythmicalHandlingDef.TldHandling;
 import org.dbflute.tomcat.core.RhythmicalHandlingDef.WebFragmentsHandling;
-import org.dbflute.tomcat.util.BotmReflectionUtil;
 
 // use the same package as JavaClassCacheEntry because of package private
 /**
@@ -46,18 +44,23 @@ public class RhythmicalContextConfig extends ContextConfig {
     protected final AnnotationHandling annotationHandling;
     protected final MetaInfoResourceHandling metaInfoResourceHandling;
     protected final TldHandling tldHandling;
+    protected final Predicate<String> tldFilesSelector; // null allowed
     protected final WebFragmentsHandling webFragmentsHandling;
     protected final Predicate<String> webFragmentsSelector; // null allowed
+
     protected boolean alreadyFirstLifecycle; // stateful
 
     // ===================================================================================
     //                                                                         Constructor
     //                                                                         ===========
-    public RhythmicalContextConfig(AnnotationHandling annotationHandling, MetaInfoResourceHandling metaInfoResourceHandling,
-            TldHandling tldHandling, WebFragmentsHandling webFragmentsHandling, Predicate<String> webFragmentsSelector) {
+    public RhythmicalContextConfig(AnnotationHandling annotationHandling, MetaInfoResourceHandling metaInfoResourceHandling // meta
+            , TldHandling tldHandling, Predicate<String> tldFilesSelector // taglib files
+            , WebFragmentsHandling webFragmentsHandling, Predicate<String> webFragmentsSelector // web fragments
+    ) {
         this.annotationHandling = annotationHandling;
         this.metaInfoResourceHandling = metaInfoResourceHandling;
         this.tldHandling = tldHandling;
+        this.tldFilesSelector = tldFilesSelector;
         this.webFragmentsHandling = webFragmentsHandling;
         this.webFragmentsSelector = webFragmentsSelector;
     }
@@ -70,7 +73,9 @@ public class RhythmicalContextConfig extends ContextConfig {
         super.lifecycleEvent(event);
         if (!alreadyFirstLifecycle) { // ContextConfig is not thread-safe so no care
             alreadyFirstLifecycle = true;
-            if (isWebFragmentsSelectorEnabled()) {
+            if (isJarScannerAdjustmentEnabled()) {
+                // this jar scanner that the context has is saved in ServletContext
+                // so also jasper can uses it (see StandardContext@startInternal())
                 final JarScanner jarScanner = extractJarScanner(); // not null
                 final JarScanFilter jarScanFilter = jarScanner.getJarScanFilter(); // not null
                 jarScanner.setJarScanFilter(createSelectableJarScanFilter(jarScanFilter));
@@ -78,18 +83,23 @@ public class RhythmicalContextConfig extends ContextConfig {
         }
     }
 
-    protected boolean isWebFragmentsSelectorEnabled() {
-        return isWebFragmentsHandlingDetect() && webFragmentsSelector != null;
+    // -----------------------------------------------------
+    //                                           Jar Scanner
+    //                                           -----------
+    protected boolean isJarScannerAdjustmentEnabled() {
+        return isTldFilesSelectorEnabled() || isWebFragmentsSelectorEnabled();
     }
 
     protected JarScanner extractJarScanner() {
-        final String methodName = "getJarScanner";
-        try {
-            final Method getterMethod = BotmReflectionUtil.getWholeMethod(context.getClass(), methodName, (Class<?>[]) null);
-            return (JarScanner) BotmReflectionUtil.invoke(getterMethod, context, null); // basically not null
-        } catch (RuntimeException e) {
-            throw new IllegalStateException("Failed to call the method: " + methodName + "() of " + context, e);
-        }
+        return context.getJarScanner(); // returns saved instance so you can set options
+        // changed to be public before I knew it!?
+        //final String methodName = "getJarScanner";
+        //try {
+        //    final Method getterMethod = BotmReflectionUtil.getWholeMethod(context.getClass(), methodName, (Class<?>[]) null);
+        //    return (JarScanner) BotmReflectionUtil.invoke(getterMethod, context, null); // basically not null
+        //} catch (RuntimeException e) {
+        //    throw new IllegalStateException("Failed to call the method: " + methodName + "() of " + context, e);
+        //}
     }
 
     protected JarScanFilter createSelectableJarScanFilter(JarScanFilter existingFilter) {
@@ -101,14 +111,24 @@ public class RhythmicalContextConfig extends ContextConfig {
 
     protected class SelectableJarScanFilter implements JarScanFilter {
 
-        protected final JarScanFilter existingFilter;
+        protected final JarScanFilter existingFilter; // not null
 
         public SelectableJarScanFilter(JarScanFilter existingFilter) {
             this.existingFilter = existingFilter;
         }
 
         public boolean check(JarScanType jarScanType, String jarName) {
-            return webFragmentsSelector.test(jarName) && existingFilter.check(jarScanType, jarName);
+            // specifed selector is prior (completely overridding determination)
+            if (JarScanType.TLD.equals(jarScanType)) { // means taglib files
+                if (isTldFilesSelectorEnabled()) {
+                    return tldFilesSelector.test(jarName);
+                }
+            } else if (JarScanType.PLUGGABILITY.equals(jarScanType)) { // means web fragments
+                if (isWebFragmentsSelectorEnabled()) {
+                    return webFragmentsSelector.test(jarName);
+                }
+            }
+            return existingFilter.check(jarScanType, jarName);
         }
     }
 
@@ -123,24 +143,21 @@ public class RhythmicalContextConfig extends ContextConfig {
         return new HashMap<String, WebXml>(2); // mutable just in case
     }
 
-    protected boolean isWebFragmentsHandlingDetect() {
-        return WebFragmentsHandling.DETECT.equals(webFragmentsHandling);
-    }
-
     // ===================================================================================
     //                                                                   Servlet Container
     //                                                                   =================
     @Override
     protected void processServletContainerInitializers() {
-        // initializers are needed for tld search
-        if (isAvailableInitializers()) {
+        if (isAvailableServletContainerInitializers()) {
             super.processServletContainerInitializers();
         }
         removeJettyInitializer();
     }
 
-    protected boolean isAvailableInitializers() {
-        return isAnnotationHandlingDetect() || TldHandling.DETECT.equals(tldHandling); // .tld in jar files
+    protected boolean isAvailableServletContainerInitializers() {
+        // o #thinking annotation handling...why needed? (forgotten) by jflute (2019/05/01)
+        // o jasper's initializer executes tld scanning so needed here
+        return isAnnotationHandlingDetect() || isTldHandlingDetect();
     }
 
     protected void removeJettyInitializer() {
@@ -161,10 +178,6 @@ public class RhythmicalContextConfig extends ContextConfig {
         }
     }
 
-    protected boolean isAnnotationHandlingDetect() {
-        return AnnotationHandling.DETECT.equals(annotationHandling);
-    }
-
     // ===================================================================================
     //                                                                       Resource JARs
     //                                                                       =============
@@ -175,7 +188,30 @@ public class RhythmicalContextConfig extends ContextConfig {
         }
     }
 
+    // ===================================================================================
+    //                                                                        Assist Logic
+    //                                                                        ============
+    protected boolean isAnnotationHandlingDetect() {
+        return AnnotationHandling.DETECT.equals(annotationHandling);
+    }
+
     protected boolean isMetaInfoResourceHandlingDetect() {
         return MetaInfoResourceHandling.DETECT.equals(metaInfoResourceHandling);
+    }
+
+    protected boolean isTldHandlingDetect() {
+        return TldHandling.DETECT.equals(tldHandling); // .tld in jar files
+    }
+
+    protected boolean isTldFilesSelectorEnabled() {
+        return isTldHandlingDetect() && tldFilesSelector != null;
+    }
+
+    protected boolean isWebFragmentsHandlingDetect() {
+        return WebFragmentsHandling.DETECT.equals(webFragmentsHandling);
+    }
+
+    protected boolean isWebFragmentsSelectorEnabled() {
+        return isWebFragmentsHandlingDetect() && webFragmentsSelector != null;
     }
 }
