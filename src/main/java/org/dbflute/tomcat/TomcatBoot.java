@@ -714,7 +714,8 @@ public class TomcatBoot {
         } catch (Exception e) {
             throw new IllegalStateException("server start failed.", e);
         }
-        final String uri = "http://" + server.getHost().getName() + ":" + port + contextPath;
+        final String scheme = server.getConnector().getScheme();
+        final String uri = scheme + "://" + server.getHost().getName() + ":" + port + contextPath;
         try {
             return new URI(uri);
         } catch (URISyntaxException e) {
