@@ -131,6 +131,13 @@ public class BootPropsTranslator {
         doSetupServerConfig(logger, props, "maxHttpHeaderSize", value -> {
             reflectPropertyMaxHttpHeaderSize(logger, server, connector, value);
         });
+        doSetupServerConfig(logger, props, "maxConnections", value -> {
+            reflectPropertyMaxConnections(logger, server, connector, value);
+        });
+        doSetupServerConfig(logger, props, "maxThreads", value -> {
+            reflectPropertyMaxThreads(logger, server, connector, value);
+        });
+
     }
 
     protected void doSetupServerConfig(BootLogger logger, Properties props, String keyword, Consumer<String> reflector) {
@@ -148,6 +155,26 @@ public class BootPropsTranslator {
             protocol.setMaxHttpHeaderSize(toInt("maxHttpHeaderSize(config)", value));
         } else {
             logger.info("Cannot set the property 'maxHttpHeaderSize' because of different protocol handler: " + protocolHandler);
+        }
+    }
+
+    protected void reflectPropertyMaxConnections(BootLogger logger, Tomcat server, Connector connector, String value) {
+        final ProtocolHandler protocolHandler = connector.getProtocolHandler();
+        if (protocolHandler instanceof AbstractHttp11Protocol<?>) {
+            final AbstractHttp11Protocol<?> protocol = (AbstractHttp11Protocol<?>) protocolHandler;
+            protocol.setMaxConnections(toInt("maxConnections(config)", value));
+        } else {
+            logger.info("Cannot set the property 'maxConnections' because of different protocol handler: " + protocolHandler);
+        }
+    }
+
+    protected void reflectPropertyMaxThreads(BootLogger logger, Tomcat server, Connector connector, String value) {
+        final ProtocolHandler protocolHandler = connector.getProtocolHandler();
+        if (protocolHandler instanceof AbstractHttp11Protocol<?>) {
+            final AbstractHttp11Protocol<?> protocol = (AbstractHttp11Protocol<?>) protocolHandler;
+            protocol.setMaxThreads(toInt("maxThreads(config)", value));
+        } else {
+            logger.info("Cannot set the property 'maxThreads' because of different protocol handler: " + protocolHandler);
         }
     }
 
