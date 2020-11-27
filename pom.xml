@@ -168,6 +168,11 @@
                     </execution>
                 </executions>
             </plugin>
+			<plugin>
+				<groupId>org.owasp</groupId>
+				<artifactId>dependency-check-maven</artifactId>
+				<version>6.0.3</version>
+			</plugin>
 		</plugins>
 	</build>
 
