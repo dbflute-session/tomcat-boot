@@ -3,6 +3,7 @@
 /build
 /bin
 .DS_Store
+.java-version
 
 # IntelliJ IDEA
 /.idea/*
