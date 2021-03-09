@@ -1,4 +1,4 @@
-name: Unit Test
+name: OWASP Dependency Check
 
 on: [push]
   # schedule:  # UTC
@@ -19,7 +19,7 @@ jobs:
           java-package: jdk
           architecture: x64
 
-      - name: Test
-        id: run_test
+      - name: OWASP dependency check
+        id: run_owasp_dependency_check
         run: |
-          ./mvnw test
+          ./mvnw dependency-check:check
