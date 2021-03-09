@@ -1,8 +1,8 @@
 name: OWASP Dependency Check
 
-on: [push]
-  # schedule:  # UTC
-  # - cron:  '0 0 * * *'
+on:
+  schedule:  # UTC
+  - cron:  '0 0 * * *'
 
 jobs:
   unit_test:
