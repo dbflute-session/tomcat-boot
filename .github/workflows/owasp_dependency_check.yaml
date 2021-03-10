@@ -1,0 +1,27 @@
+name: OWASP Dependency Check
+
+on:
+  schedule:  # UTC
+  - cron:  '0 0 * * *'
+
+jobs:
+  unit_test:
+    name: Unit Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Source
+        uses: actions/checkout@v2
+        with:
+          ref: master
+
+      - uses: actions/setup-java@v1
+        with:
+          java-version: '8'
+          java-package: jdk
+          architecture: x64
+
+      - name: OWASP dependency check
+        id: run_owasp_dependency_check
+        run: |
+          ./mvnw dependency-check:check
