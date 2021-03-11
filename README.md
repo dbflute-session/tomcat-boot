@@ -1,4 +1,8 @@
 # TomcatBoot
+
+[![Unit Test](https://github.com/dbflute-session/tomcat-boot/actions/workflows/unit_test.yaml/badge.svg?branch=master)](https://github.com/dbflute-session/tomcat-boot/actions/workflows/unit_test.yaml)
+[![OWASP Dependency Check](https://github.com/dbflute-session/tomcat-boot/actions/workflows/owasp_dependency_check.yaml/badge.svg?branch=master)](https://github.com/dbflute-session/tomcat-boot/actions/workflows/owasp_dependency_check.yaml)
+
 simple boot library of Tomcat
 
 ```java
@@ -14,7 +18,7 @@ Automatically shutdown before next process boot
 <dependency>
     <groupId>org.dbflute.tomcat</groupId>
     <artifactId>tomcat-boot</artifactId>
-    <version>0.7.6</version>
+    <version>0.7.7</version>
 </dependency>
 ```
 
