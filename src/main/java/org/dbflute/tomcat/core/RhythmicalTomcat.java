@@ -15,9 +15,7 @@
  */
 package org.dbflute.tomcat.core;
 
-import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
-import java.util.Optional;
 import java.util.function.Predicate;
 
 import org.apache.catalina.Context;
@@ -209,15 +207,9 @@ public class RhythmicalTomcat extends Tomcat { // e.g. to remove org.eclipse.jet
             if (existsJspServlet()) { // e.g. jasper
                 bootLogger.info(msgBase + "with JSP (the servlet found)");
                 initWebappDefaults(ctx); // as normal
-            } else {
-                final Optional<String[]> defaultMimeMappings = extractDefaultMimeMappings();
-                if (!defaultMimeMappings.isPresent()) { // e.g. version difference
-                    bootLogger.info(msgBase + "with JSP (cannot remove it)");
-                    initWebappDefaults(ctx); // as normal
-                } else { // e.g. JSON API style
-                    bootLogger.info(msgBase + "without JSP");
-                    initWebappDefaultsWithoutJsp(ctx, defaultMimeMappings.get());
-                }
+            } else { // e.g. JSON API style
+                bootLogger.info(msgBase + "without JSP");
+                initWebappDefaultsWithoutJsp(ctx);
             }
         }
     }
@@ -234,23 +226,10 @@ public class RhythmicalTomcat extends Tomcat { // e.g. to remove org.eclipse.jet
         }
     }
 
-    protected Optional<String[]> extractDefaultMimeMappings() {
-        final String fieldName = "DEFAULT_MIME_MAPPINGS";
-        final String[] mappings;
-        try {
-            final Field mappingsField = Tomcat.class.getDeclaredField(fieldName);
-            mappingsField.setAccessible(true);
-            mappings = (String[]) mappingsField.get(this);
-        } catch (NoSuchFieldException continued) {
-            bootLogger.info("*Not found the field " + fieldName + " in this Tomcat: " + this);
-            return Optional.empty();
-        } catch (SecurityException | IllegalArgumentException | IllegalAccessException e) {
-            throw new IllegalStateException("Failed to get default mime mappings: " + fieldName, e);
-        }
-        return Optional.ofNullable(mappings);
-    }
-
-    protected void initWebappDefaultsWithoutJsp(Context ctx, String[] defaultMimeMappings) {
+    protected void initWebappDefaultsWithoutJsp(Context ctx) {
+        // _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
+        // copied frmo Tomcat@initWebappDefaults() and removing JSP process
+        // _/_/_/_/_/_/_/_/_/_/
         // Default servlet
         final Wrapper servlet = addServlet(ctx, "default", "org.apache.catalina.servlets.DefaultServlet");
         servlet.setLoadOnStartup(1);
@@ -272,10 +251,8 @@ public class RhythmicalTomcat extends Tomcat { // e.g. to remove org.eclipse.jet
         // Sessions
         ctx.setSessionTimeout(30);
 
-        // MIME mappings
-        for (int i = 0; i < defaultMimeMappings.length;) {
-            ctx.addMimeMapping(defaultMimeMappings[i++], defaultMimeMappings[i++]);
-        }
+        // MIME type mappings
+        addDefaultMimeTypeMappings(ctx);
 
         // Welcome files
         ctx.addWelcomeFile("index.html");
