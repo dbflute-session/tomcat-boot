@@ -14,7 +14,7 @@
 
 	<properties>
 		<servlet.version>4.0.1</servlet.version>
-		<tomcat.version>9.0.52</tomcat.version>
+		<tomcat.version>9.0.54</tomcat.version>
 		<utflute.version>0.9.3</utflute.version>
 	</properties>
 
@@ -173,6 +173,8 @@
 				<artifactId>dependency-check-maven</artifactId>
 				<version>6.4.1</version>
 				<configuration>
+					<cveUrlModified>http://localhost:8080/nvdcve-1.1-modified.json.gz</cveUrlModified>
+					<cveUrlBase>http://localhost:8080/nvdcve-1.1-%d.json.gz</cveUrlBase>
 					<failBuildOnCVSS>4</failBuildOnCVSS>
 					<skipProvidedScope>true</skipProvidedScope>
 					<skipRuntimeScope>true</skipRuntimeScope>
