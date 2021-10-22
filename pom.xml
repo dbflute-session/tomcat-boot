@@ -4,7 +4,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>org.dbflute.tomcat</groupId>
 	<artifactId>tomcat-boot</artifactId>
-	<version>0.7.9</version>
+	<version>0.8.0</version>
 	<packaging>jar</packaging>
 
 	<name>Tomcat Boot</name>
@@ -14,8 +14,8 @@
 
 	<properties>
 		<servlet.version>4.0.1</servlet.version>
-		<tomcat.version>9.0.52</tomcat.version>
-		<utflute.version>0.9.3</utflute.version>
+		<tomcat.version>9.0.54</tomcat.version>
+		<utflute.version>0.9.4</utflute.version>
 	</properties>
 
 	<licenses>
@@ -125,7 +125,7 @@
 			</plugin>
 			<plugin>
 				<artifactId>maven-javadoc-plugin</artifactId>
-				<version>3.3.0</version>
+				<version>3.3.1</version>
 				<configuration>
 					<encoding>UTF-8</encoding>
 					<docencoding>UTF-8</docencoding>
@@ -171,8 +171,10 @@
 			<plugin>
 				<groupId>org.owasp</groupId>
 				<artifactId>dependency-check-maven</artifactId>
-				<version>6.2.2</version>
+				<version>6.4.1</version>
 				<configuration>
+					<cveUrlModified>http://localhost:8080/nvdcve-1.1-modified.json.gz</cveUrlModified>
+					<cveUrlBase>http://localhost:8080/nvdcve-1.1-%d.json.gz</cveUrlBase>
 					<failBuildOnCVSS>4</failBuildOnCVSS>
 					<skipProvidedScope>true</skipProvidedScope>
 					<skipRuntimeScope>true</skipRuntimeScope>
@@ -259,7 +261,7 @@
 		<dependency>
 			<groupId>ch.qos.logback</groupId>
 			<artifactId>logback-classic</artifactId>
-			<version>1.2.5</version>
+			<version>1.2.6</version>
 			<scope>test</scope>
 		</dependency>
 	</dependencies>
