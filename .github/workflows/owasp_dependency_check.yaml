@@ -20,7 +20,11 @@ jobs:
         run: |
           if [ ! -d /home/runner/cache/target/docs ]; then mkdir -p /home/runner/cache/target/docs; fi
           chmod 777 /home/runner/cache/target/docs
-          export _JAVA_OPTIONS='-Dhttps.proxyHost=yourproxyhost.domain -Dhttps.proxyPort=3128 -Dhttp.proxyHost=yourproxyhost.domain -Dhttp.proxyPort=3128 -Dhttp.nonProxyHosts="localhost|*.domain"'
+
+          # needed for enable local PC execution
+          CACHE_DIR=/tmp/cache
+          mkdir -p ${CACHE_DIR}/target/docs
+
           docker run --rm -d \
             --name mirror \
             -p 8080:80 \
