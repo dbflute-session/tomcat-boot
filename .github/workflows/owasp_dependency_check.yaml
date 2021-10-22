@@ -5,8 +5,8 @@ on:
   - cron:  '0 0 * * *'
 
 jobs:
-  unit_test:
-    name: Unit Test
+  owasp_dependency_check:
+    name: OWASP Dependency Check
     runs-on: ubuntu-latest
 
     steps:
@@ -15,6 +15,20 @@ jobs:
         with:
           ref: master
 
+      # https://github.com/stevespringett/nist-data-mirror
+      - name: Run NIST Data Mirror
+        run: |
+          if [ ! -d /home/runner/cache/target/docs ]; then mkdir -p /home/runner/cache/target/docs; fi
+          chmod 777 /home/runner/cache/target/docs
+          export _JAVA_OPTIONS='-Dhttps.proxyHost=yourproxyhost.domain -Dhttps.proxyPort=3128 -Dhttp.proxyHost=yourproxyhost.domain -Dhttp.proxyPort=3128 -Dhttp.nonProxyHosts="localhost|*.domain"'
+          docker run --rm -d \
+            --name mirror \
+            -p 8080:80 \
+            --mount type=bind,source=/home/runner/cache/target/docs/,target=/usr/local/apache2/htdocs \
+            sspringett/nvdmirror
+          sleep 120s
+          docker logs mirror
+          
       - uses: actions/setup-java@v2
         with:
           distribution: 'adopt'
@@ -23,6 +37,15 @@ jobs:
           architecture: x64
 
       - name: OWASP dependency check
-        id: run_owasp_dependency_check
         run: |
-          ./mvnw dependency-check:check
+          set +e
+          ERRORS="$(./mvnw -q dependency-check:check)"
+          RESULT=$?
+          if [ ${RESULT} -ne 0 ]; then echo "::error::${ERRORS}"; fi
+          exit ${RESULT}
+
+      - name: Stop NIST Data Mirror
+        if: always()
+        run: |
+          set +e
+          docker stop mirror
