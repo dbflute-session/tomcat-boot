@@ -4,7 +4,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>org.dbflute.tomcat</groupId>
 	<artifactId>tomcat-boot</artifactId>
-	<version>0.8.0</version>
+	<version>0.8.1</version>
 	<packaging>jar</packaging>
 
 	<name>Tomcat Boot</name>
@@ -14,7 +14,7 @@
 
 	<properties>
 		<servlet.version>4.0.1</servlet.version>
-		<tomcat.version>9.0.54</tomcat.version>
+		<tomcat.version>9.0.58</tomcat.version>
 		<utflute.version>0.9.4</utflute.version>
 	</properties>
 
@@ -125,7 +125,7 @@
 			</plugin>
 			<plugin>
 				<artifactId>maven-javadoc-plugin</artifactId>
-				<version>3.3.1</version>
+				<version>3.3.2</version>
 				<configuration>
 					<encoding>UTF-8</encoding>
 					<docencoding>UTF-8</docencoding>
@@ -168,10 +168,20 @@
 					</execution>
 				</executions>
 			</plugin>
+			<!--
+			#thinking cannot resolve the following exception so remove it temporarily by jflute (2022/02/24)
+
+			Caused by: org.owasp.dependencycheck.exception.ExceptionCollection: One or more exceptions occurred during analysis:
+				UpdateException: Unable to download meta file: http://localhost:8080/nvdcve-1.1-modified.meta
+				caused by DownloadFailedException: Download failed, unable to retrieve 'http://localhost:8080/nvdcve-1.1-modified.meta'; Error downloading file http://localhost:8080/nvdcve-1.1-modified.meta; unable to connect.
+				caused by DownloadFailedException: Error downloading file http://localhost:8080/nvdcve-1.1-modified.meta; unable to connect.
+				caused by ConnectException: Connection refused (Connection refused)
+				NoDataException: No documents exist
+
 			<plugin>
 				<groupId>org.owasp</groupId>
 				<artifactId>dependency-check-maven</artifactId>
-				<version>6.4.1</version>
+				<version>6.5.3</version>
 				<configuration>
 					<cveUrlModified>http://localhost:8080/nvdcve-1.1-modified.json.gz</cveUrlModified>
 					<cveUrlBase>http://localhost:8080/nvdcve-1.1-%d.json.gz</cveUrlBase>
@@ -188,6 +198,7 @@
 					</execution>
 				</executions>
 			</plugin>
+			 -->
 		</plugins>
 	</build>
 
@@ -255,13 +266,13 @@
 		<dependency>
 			<groupId>org.slf4j</groupId>
 			<artifactId>slf4j-api</artifactId>
-			<version>1.7.32</version>
+			<version>1.7.36</version>
 			<scope>test</scope>
 		</dependency>
 		<dependency>
 			<groupId>ch.qos.logback</groupId>
 			<artifactId>logback-classic</artifactId>
-			<version>1.2.6</version>
+			<version>1.2.10</version>
 			<scope>test</scope>
 		</dependency>
 	</dependencies>
