@@ -169,7 +169,7 @@
 				</executions>
 			</plugin>
 			<!--
-			#thinking cannot resolve the following exception so remove it temporarily by jflute (2022/02/24)
+			#thinking cannot resolve the following exception when deploy by jflute (2022/02/24)
 
 			Caused by: org.owasp.dependencycheck.exception.ExceptionCollection: One or more exceptions occurred during analysis:
 				UpdateException: Unable to download meta file: http://localhost:8080/nvdcve-1.1-modified.meta
@@ -178,6 +178,8 @@
 				caused by ConnectException: Connection refused (Connection refused)
 				NoDataException: No documents exist
 
+			so remove this temporarily when you deploy
+			 -->
 			<plugin>
 				<groupId>org.owasp</groupId>
 				<artifactId>dependency-check-maven</artifactId>
@@ -198,7 +200,6 @@
 					</execution>
 				</executions>
 			</plugin>
-			 -->
 		</plugins>
 	</build>
 
