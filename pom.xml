@@ -169,7 +169,7 @@
 				</executions>
 			</plugin>
 			<!--
-			#thinking cannot resolve the following exception when deploy by jflute (2022/02/24)
+			#thinking jflute cannot resolve the following exception when deploy (2022/02/24)
 
 			Caused by: org.owasp.dependencycheck.exception.ExceptionCollection: One or more exceptions occurred during analysis:
 				UpdateException: Unable to download meta file: http://localhost:8080/nvdcve-1.1-modified.meta
@@ -185,8 +185,10 @@
 				<artifactId>dependency-check-maven</artifactId>
 				<version>7.0.3</version>
 				<configuration>
+					<!-- #thinking jflute comment out for server? (trial) (2022/02/24)
 					<cveUrlModified>http://localhost:8080/nvdcve-1.1-modified.json.gz</cveUrlModified>
 					<cveUrlBase>http://localhost:8080/nvdcve-1.1-%d.json.gz</cveUrlBase>
+					 -->
 					<failBuildOnCVSS>4</failBuildOnCVSS>
 					<skipProvidedScope>true</skipProvidedScope>
 					<skipRuntimeScope>true</skipRuntimeScope>
