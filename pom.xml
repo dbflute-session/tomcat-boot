@@ -173,7 +173,8 @@
 				<artifactId>dependency-check-maven</artifactId>
 				<version>7.0.3</version>
 				<configuration>
-					<!-- already unneeded? it works well in both local and server now by jflute (2022/03/30)
+					<!-- downloading cost is tolerable so comment out to be simple by jflute (2022/03/30)
+					 (this server is NIST Data Mirror defined at owasp_dependency_check.yaml)
 					<cveUrlModified>http://localhost:8080/nvdcve-1.1-modified.json.gz</cveUrlModified>
 					<cveUrlBase>http://localhost:8080/nvdcve-1.1-%d.json.gz</cveUrlBase>
 					 -->
