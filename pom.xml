@@ -169,7 +169,7 @@
 				</executions>
 			</plugin>
 			<!--
-			#thinking cannot resolve the following exception so remove it temporarily by jflute (2022/02/24)
+			#thinking cannot resolve the following exception when deploy by jflute (2022/02/24)
 
 			Caused by: org.owasp.dependencycheck.exception.ExceptionCollection: One or more exceptions occurred during analysis:
 				UpdateException: Unable to download meta file: http://localhost:8080/nvdcve-1.1-modified.meta
@@ -178,10 +178,12 @@
 				caused by ConnectException: Connection refused (Connection refused)
 				NoDataException: No documents exist
 
+			so remove this temporarily when you deploy
+			 -->
 			<plugin>
 				<groupId>org.owasp</groupId>
 				<artifactId>dependency-check-maven</artifactId>
-				<version>6.5.3</version>
+				<version>7.0.3</version>
 				<configuration>
 					<cveUrlModified>http://localhost:8080/nvdcve-1.1-modified.json.gz</cveUrlModified>
 					<cveUrlBase>http://localhost:8080/nvdcve-1.1-%d.json.gz</cveUrlBase>
@@ -198,7 +200,6 @@
 					</execution>
 				</executions>
 			</plugin>
-			 -->
 		</plugins>
 	</build>
 
@@ -272,7 +273,7 @@
 		<dependency>
 			<groupId>ch.qos.logback</groupId>
 			<artifactId>logback-classic</artifactId>
-			<version>1.2.10</version>
+			<version>1.2.11</version>
 			<scope>test</scope>
 		</dependency>
 	</dependencies>
