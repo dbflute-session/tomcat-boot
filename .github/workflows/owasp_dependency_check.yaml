@@ -13,7 +13,7 @@ jobs:
       - name: Checkout Source
         uses: actions/checkout@v2.4.0
         with:
-          ref: master
+          ref: develop
 
       # https://github.com/stevespringett/nist-data-mirror
       - name: Run NIST Data Mirror
