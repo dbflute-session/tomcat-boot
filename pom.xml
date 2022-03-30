@@ -168,24 +168,12 @@
 					</execution>
 				</executions>
 			</plugin>
-			<!--
-			#thinking jflute cannot resolve the following exception when deploy (2022/02/24)
-
-			Caused by: org.owasp.dependencycheck.exception.ExceptionCollection: One or more exceptions occurred during analysis:
-				UpdateException: Unable to download meta file: http://localhost:8080/nvdcve-1.1-modified.meta
-				caused by DownloadFailedException: Download failed, unable to retrieve 'http://localhost:8080/nvdcve-1.1-modified.meta'; Error downloading file http://localhost:8080/nvdcve-1.1-modified.meta; unable to connect.
-				caused by DownloadFailedException: Error downloading file http://localhost:8080/nvdcve-1.1-modified.meta; unable to connect.
-				caused by ConnectException: Connection refused (Connection refused)
-				NoDataException: No documents exist
-
-			so remove this temporarily when you deploy
-			 -->
 			<plugin>
 				<groupId>org.owasp</groupId>
 				<artifactId>dependency-check-maven</artifactId>
 				<version>7.0.3</version>
 				<configuration>
-					<!-- #thinking jflute comment out for server? (trial) (2022/02/24)
+					<!-- already unneeded? it works well in both local and server now by jflute (2022/03/30)
 					<cveUrlModified>http://localhost:8080/nvdcve-1.1-modified.json.gz</cveUrlModified>
 					<cveUrlBase>http://localhost:8080/nvdcve-1.1-%d.json.gz</cveUrlBase>
 					 -->
