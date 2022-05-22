@@ -125,7 +125,7 @@
 			</plugin>
 			<plugin>
 				<artifactId>maven-javadoc-plugin</artifactId>
-				<version>3.3.2</version>
+				<version>3.4.0</version>
 				<configuration>
 					<encoding>UTF-8</encoding>
 					<docencoding>UTF-8</docencoding>
@@ -171,7 +171,7 @@
 			<plugin>
 				<groupId>org.owasp</groupId>
 				<artifactId>dependency-check-maven</artifactId>
-				<version>7.0.3</version>
+				<version>7.1.0</version>
 				<configuration>
 					<!-- downloading cost is tolerable so comment out to be simple by jflute (2022/03/30)
 					 (this server is NIST Data Mirror defined at owasp_dependency_check.yaml)
