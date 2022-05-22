@@ -4,7 +4,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>org.dbflute.tomcat</groupId>
 	<artifactId>tomcat-boot</artifactId>
-	<version>0.8.1</version>
+	<version>0.8.2</version>
 	<packaging>jar</packaging>
 
 	<name>Tomcat Boot</name>
@@ -14,8 +14,8 @@
 
 	<properties>
 		<servlet.version>4.0.1</servlet.version>
-		<tomcat.version>9.0.58</tomcat.version>
-		<utflute.version>0.9.4</utflute.version>
+		<tomcat.version>9.0.63</tomcat.version>
+		<utflute.version>0.9.5</utflute.version>
 	</properties>
 
 	<licenses>
@@ -125,7 +125,7 @@
 			</plugin>
 			<plugin>
 				<artifactId>maven-javadoc-plugin</artifactId>
-				<version>3.3.2</version>
+				<version>3.4.0</version>
 				<configuration>
 					<encoding>UTF-8</encoding>
 					<docencoding>UTF-8</docencoding>
@@ -171,9 +171,10 @@
 			<plugin>
 				<groupId>org.owasp</groupId>
 				<artifactId>dependency-check-maven</artifactId>
-				<version>7.0.3</version>
+				<version>7.1.0</version>
 				<configuration>
-					<!-- already unneeded? it works well in both local and server now by jflute (2022/03/30)
+					<!-- downloading cost is tolerable so comment out to be simple by jflute (2022/03/30)
+					 (this server is NIST Data Mirror defined at owasp_dependency_check.yaml)
 					<cveUrlModified>http://localhost:8080/nvdcve-1.1-modified.json.gz</cveUrlModified>
 					<cveUrlBase>http://localhost:8080/nvdcve-1.1-%d.json.gz</cveUrlBase>
 					 -->
