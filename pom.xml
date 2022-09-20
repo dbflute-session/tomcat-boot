@@ -171,7 +171,7 @@
 			<plugin>
 				<groupId>org.owasp</groupId>
 				<artifactId>dependency-check-maven</artifactId>
-				<version>7.2.0</version>
+				<version>7.2.1</version>
 				<configuration>
 					<!-- downloading cost is tolerable so comment out to be simple by jflute (2022/03/30)
 					 (this server is NIST Data Mirror defined at owasp_dependency_check.yaml)
