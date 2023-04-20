@@ -58,7 +58,7 @@
 	</scm>
 
 	<parent>
-		<!-- http://repo.maven.apache.org/maven2/org/sonatype/oss/oss-parent/9/oss-parent-9.pom -->
+		<!-- https://repo.maven.apache.org/maven2/org/sonatype/oss/oss-parent/9/oss-parent-9.pom -->
 		<groupId>org.sonatype.oss</groupId>
 		<artifactId>oss-parent</artifactId>
 		<version>9</version>
