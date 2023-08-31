@@ -13,8 +13,8 @@
 	<inceptionYear>2015</inceptionYear>
 
 	<properties>
-		<servlet.version>4.0.1</servlet.version>
-		<tomcat.version>9.0.76</tomcat.version>
+		<servlet.version>6.0.0</servlet.version>
+		<tomcat.version>10.1.13</tomcat.version>
 		<utflute.version>0.9.5</utflute.version>
 	</properties>
 
@@ -213,8 +213,8 @@
 		<!--                                                                 = = = = = = = -->
 		<!-- servlet -->
 		<dependency>
-			<groupId>javax.servlet</groupId>
-			<artifactId>javax.servlet-api</artifactId>
+			<groupId>jakarta.servlet</groupId>
+			<artifactId>jakarta.servlet-api</artifactId>
 			<version>${servlet.version}</version>
 			<scope>provided</scope>
 		</dependency>
