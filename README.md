@@ -18,7 +18,7 @@ Automatically shutdown before next process boot
 <dependency>
     <groupId>org.dbflute.tomcat</groupId>
     <artifactId>tomcat-boot</artifactId>
-    <version>0.8.2</version>
+    <version>1.0.0</version>
 </dependency>
 ```
 
@@ -28,7 +28,7 @@ Add the jasper to your dependencies like this:
 <dependency> <!-- for jsp -->
     <groupId>org.apache.tomcat</groupId>
     <artifactId>tomcat-jasper</artifactId>
-    <version>9.0.19</version>
+    <version>10.1.13</version>
 </dependency>
 ```
 

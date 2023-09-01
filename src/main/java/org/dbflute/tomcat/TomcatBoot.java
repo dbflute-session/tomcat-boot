@@ -38,8 +38,6 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import javax.servlet.ServletException;
-
 import org.apache.catalina.Context;
 import org.apache.catalina.Globals;
 import org.apache.catalina.Host;
@@ -58,6 +56,8 @@ import org.dbflute.tomcat.logging.BootLogger;
 import org.dbflute.tomcat.logging.TomcatLoggingOption;
 import org.dbflute.tomcat.props.BootPropsTranslator;
 import org.dbflute.tomcat.util.BotmResourceUtil;
+
+import jakarta.servlet.ServletException;
 
 /**
  * @author jflute
