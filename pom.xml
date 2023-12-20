@@ -14,7 +14,7 @@
 
 	<properties>
 		<servlet.version>6.0.0</servlet.version>
-		<tomcat.version>10.1.13</tomcat.version>
+		<tomcat.version>10.1.17</tomcat.version>
 		<utflute.version>0.9.5</utflute.version>
 	</properties>
 
@@ -69,16 +69,6 @@
 		<pluginManagement>
 			<plugins>
 				<plugin>
-					<artifactId>maven-compiler-plugin</artifactId>
-					<configuration>
-						<source>1.8</source>
-						<target>1.8</target>
-						<encoding>UTF-8</encoding>
-						<showDeprecation>true</showDeprecation>
-						<showWarnings>true</showWarnings>
-					</configuration>
-				</plugin>
-				<plugin>
 					<artifactId>maven-deploy-plugin</artifactId>
 					<configuration>
 						<updateReleaseInfo>true</updateReleaseInfo>
@@ -111,6 +101,16 @@
 		</pluginManagement>
 		<plugins>
 			<plugin>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<version>3.11.0</version>
+				<configuration>
+					<release>11</release>
+					<encoding>UTF-8</encoding>
+					<showDeprecation>true</showDeprecation>
+					<showWarnings>true</showWarnings>
+				</configuration>
+			</plugin>
+			<plugin>
 				<artifactId>maven-source-plugin</artifactId>
 				<version>3.3.0</version>
 				<executions>
@@ -125,7 +125,7 @@
 			</plugin>
 			<plugin>
 				<artifactId>maven-javadoc-plugin</artifactId>
-				<version>3.5.0</version>
+				<version>3.6.0</version>
 				<configuration>
 					<encoding>UTF-8</encoding>
 					<docencoding>UTF-8</docencoding>
@@ -244,7 +244,7 @@
 		<dependency>
 			<groupId>junit</groupId>
 			<artifactId>junit</artifactId>
-			<version>4.8.2</version> <!-- is latest version without hamcrest -->
+			<version>4.13.2</version> <!-- is latest version without hamcrest -->
 			<scope>test</scope>
 		</dependency>
 		<!-- utflute -->
@@ -264,7 +264,7 @@
 		<dependency>
 			<groupId>ch.qos.logback</groupId>
 			<artifactId>logback-classic</artifactId>
-			<version>1.4.11</version>
+			<version>1.4.14</version>
 			<scope>test</scope>
 		</dependency>
 	</dependencies>
