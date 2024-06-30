@@ -4,7 +4,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>org.dbflute.tomcat</groupId>
 	<artifactId>tomcat-boot</artifactId>
-	<version>0.8.4</version>
+	<version>0.8.5</version>
 	<packaging>jar</packaging>
 
 	<name>Tomcat Boot</name>
@@ -14,8 +14,8 @@
 
 	<properties>
 		<servlet.version>4.0.1</servlet.version>
-		<tomcat.version>9.0.80</tomcat.version>
-		<utflute.version>0.9.5</utflute.version>
+		<tomcat.version>9.0.90</tomcat.version>
+		<utflute.version>0.9.6</utflute.version>
 	</properties>
 
 	<licenses>
@@ -80,6 +80,7 @@
 				</plugin>
 				<plugin>
 					<artifactId>maven-deploy-plugin</artifactId>
+					<version>2.8.2</version> <!-- to avoid (nonsense?) warning of updateReleaseInfo -->
 					<configuration>
 						<updateReleaseInfo>true</updateReleaseInfo>
 					</configuration>
@@ -112,7 +113,7 @@
 		<plugins>
 			<plugin>
 				<artifactId>maven-source-plugin</artifactId>
-				<version>3.3.0</version>
+				<version>3.3.1</version>
 				<executions>
 					<execution>
 						<id>source-jar</id>
@@ -125,7 +126,7 @@
 			</plugin>
 			<plugin>
 				<artifactId>maven-javadoc-plugin</artifactId>
-				<version>3.5.0</version>
+				<version>3.7.0</version>
 				<configuration>
 					<encoding>UTF-8</encoding>
 					<docencoding>UTF-8</docencoding>
@@ -157,7 +158,7 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-gpg-plugin</artifactId>
-				<version>3.1.0</version>
+				<version>3.2.4</version>
 				<executions>
 					<execution>
 						<id>sign-artifacts</id>
@@ -168,16 +169,23 @@
 					</execution>
 				</executions>
 			</plugin>
+			<!-- temporarily invalidate for now, to give priority to jakarta release (2024/06/20)
+			 { @log
+			 Execution default of goal org.owasp:dependency-check-maven:9.2.0:check failed:
+			 dependency-check requires Java 8 update 251 or higher
+			 }
 			<plugin>
 				<groupId>org.owasp</groupId>
 				<artifactId>dependency-check-maven</artifactId>
-				<version>8.4.0</version>
+				<version>9.2.0</version>
 				<configuration>
+			 -->
 					<!-- downloading cost is tolerable so comment out to be simple by jflute (2022/03/30)
 					 (this server is NIST Data Mirror defined at owasp_dependency_check.yaml)
 					<cveUrlModified>http://localhost:8080/nvdcve-1.1-modified.json.gz</cveUrlModified>
 					<cveUrlBase>http://localhost:8080/nvdcve-1.1-%d.json.gz</cveUrlBase>
 					 -->
+			<!-- 
 					<failBuildOnCVSS>4</failBuildOnCVSS>
 					<skipProvidedScope>true</skipProvidedScope>
 					<skipRuntimeScope>true</skipRuntimeScope>
@@ -191,6 +199,7 @@
 					</execution>
 				</executions>
 			</plugin>
+			 -->
 		</plugins>
 	</build>
 
@@ -264,7 +273,7 @@
 		<dependency>
 			<groupId>ch.qos.logback</groupId>
 			<artifactId>logback-classic</artifactId>
-			<version>1.4.11</version>
+			<version>1.2.13</version>
 			<scope>test</scope>
 		</dependency>
 	</dependencies>
