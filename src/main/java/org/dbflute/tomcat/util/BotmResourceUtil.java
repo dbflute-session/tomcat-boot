@@ -112,6 +112,7 @@ public class BotmResourceUtil { // same as DfResourceUtil
         }
     }
 
+    @SuppressWarnings("deprecation")
     public static URL createURL(String spec) {
         try {
             return new URL(spec);
@@ -120,6 +121,7 @@ public class BotmResourceUtil { // same as DfResourceUtil
         }
     }
 
+    @SuppressWarnings("deprecation")
     public static URL create(URL context, String spec) {
         try {
             return new URL(context, spec);

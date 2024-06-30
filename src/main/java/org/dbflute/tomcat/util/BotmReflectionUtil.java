@@ -107,6 +107,7 @@ public class BotmReflectionUtil { // same as DfReflectionUtil
         }
     }
 
+    @SuppressWarnings("deprecation")
     public static Object newInstance(Class<?> clazz) {
         assertObjectNotNull("clazz", clazz);
         try {
@@ -585,6 +586,7 @@ public class BotmReflectionUtil { // same as DfReflectionUtil
         }
     }
 
+    @SuppressWarnings("deprecation")
     public static Object invokeForcedly(Method method, Object target, Object[] args) {
         assertObjectNotNull("method", method);
         if (!isPublicMethod(method) && !method.isAccessible()) {
