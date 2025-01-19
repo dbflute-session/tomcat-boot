@@ -178,7 +178,7 @@
 				 by a more recent version of the Java Runtime (class file version 55.0),
 				 this version of the Java Runtime only recognizes class file versions up to 52.0
 				-->
-				<version>10.0.4</version>
+				<version>12.0.1</version>
 				<configuration>
 					<!-- downloading cost is tolerable so comment out to be simple by jflute (2022/03/30)
 					 (this server is NIST Data Mirror defined at owasp_dependency_check.yaml)
