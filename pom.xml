@@ -14,7 +14,7 @@
 
 	<properties>
 		<servlet.version>6.0.0</servlet.version>
-		<tomcat.version>10.1.17</tomcat.version>
+		<tomcat.version>10.1.52</tomcat.version>
 		<utflute.version>2.0.0</utflute.version>
 	</properties>
 
