@@ -4,7 +4,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>org.dbflute.tomcat</groupId>
 	<artifactId>tomcat-boot</artifactId>
-	<version>2.0.1</version>
+	<version>3.0.0-SNAPSHOT</version>
 	<packaging>jar</packaging>
 
 	<name>Tomcat Boot</name>
@@ -13,8 +13,8 @@
 	<inceptionYear>2015</inceptionYear>
 
 	<properties>
-		<servlet.version>6.0.0</servlet.version>
-		<tomcat.version>10.1.52</tomcat.version>
+		<servlet.version>6.1.0</servlet.version>
+		<tomcat.version>11.0.18</tomcat.version>
 		<utflute.version>2.0.0</utflute.version>
 	</properties>
 
@@ -241,12 +241,12 @@
 
 		<dependency> <!-- needed in various case for e.g. hibernate validator -->
 			<groupId>org.apache.tomcat</groupId>
-			<artifactId>tomcat-el-api</artifactId> <!-- javax.el interface -->
+			<artifactId>tomcat-el-api</artifactId> <!-- jakarta.el interface -->
 			<version>${tomcat.version}</version>
 		</dependency>
 		<dependency> <!-- me too -->
 			<groupId>org.apache.tomcat</groupId>
-			<artifactId>tomcat-jasper-el</artifactId> <!-- javax.el implementation -->
+			<artifactId>tomcat-jasper-el</artifactId> <!-- jakarta.el implementation -->
 			<version>${tomcat.version}</version>
 		</dependency>
 
