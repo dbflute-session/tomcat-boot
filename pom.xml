@@ -4,7 +4,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>org.dbflute.tomcat</groupId>
 	<artifactId>tomcat-boot</artifactId>
-	<version>0.8.6</version>
+	<version>0.8.7</version>
 	<packaging>jar</packaging>
 
 	<name>Tomcat Boot</name>
@@ -14,8 +14,8 @@
 
 	<properties>
 		<servlet.version>4.0.1</servlet.version>
-		<tomcat.version>9.0.115</tomcat.version>
-		<utflute.version>0.9.8</utflute.version>
+		<tomcat.version>9.0.122</tomcat.version>
+		<utflute.version>0.9.9</utflute.version>
 	</properties>
 
 	<licenses>
@@ -106,7 +106,7 @@
 		<plugins>
 			<plugin>
 				<artifactId>maven-source-plugin</artifactId>
-				<version>3.3.1</version>
+				<version>3.4.0</version>
 				<executions>
 					<execution>
 						<id>source-jar</id>
@@ -119,7 +119,7 @@
 			</plugin>
 			<plugin>
 				<artifactId>maven-javadoc-plugin</artifactId>
-				<version>3.11.2</version>
+				<version>3.12.0</version>
 				<configuration>
 					<encoding>UTF-8</encoding>
 					<docencoding>UTF-8</docencoding>
@@ -163,7 +163,7 @@
 			<plugin> <!-- new maven central way since 2025/06 -->
 				<groupId>org.sonatype.central</groupId>
 				<artifactId>central-publishing-maven-plugin</artifactId>
-				<version>0.8.0</version>
+				<version>0.11.0</version>
 				<extensions>true</extensions>
 				<configuration>
 					<publishingServerId>central</publishingServerId>
