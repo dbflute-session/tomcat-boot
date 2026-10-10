@@ -33,7 +33,7 @@ jobs:
           sleep 120s
           docker logs mirror
           
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v6
         with:
           distribution: 'adopt'
           java-version: '8'
